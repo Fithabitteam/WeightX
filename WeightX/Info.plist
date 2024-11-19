@@ -10,17 +10,30 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>app-1-914726527828-ios-5fd08622b2933b5003dec1</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>GoogleSignIn</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
 				<string>com.googleusercontent.apps.914726527828-manbcu15c7jtjshssn7i7dep2c9k1okd</string>
-				<string>com.rubixcubeinitiatives.weighttracker</string> 
 			</array>
 		</dict>
 	</array>
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<true/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>
+		<string>processing</string>
 		<string>remote-notification</string>
 	</array>
-	<key>FirebaseAppDelegateProxyEnabled</key>
-    <true/>
+    <key>NSHealthShareUsageDescription</key>
+    <string>This app requires access to your health data to track and manage your weight goals.</string>
+    <key>NSHealthUpdateUsageDescription</key>
+    <string>This app requires permission to write data to your Health app for seamless data tracking.</string>
 </dict>
 </plist>
