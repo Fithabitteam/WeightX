@@ -11,15 +11,18 @@ import Firebase
 import FirebaseAuth
 
 struct ContentView: View {
-        var body: some View {
-            VStack {
-                if Auth.auth().currentUser != nil {
-                    HomeScreenView()
-                }
-                else{
-                    OnboardingView()                        
-                }
+    @State private var isUserLoggedIn = false
+    
+    var body: some View {
+        Group {
+            if isUserLoggedIn || Auth.auth().currentUser != nil {
+                HomeScreenView(isUserLoggedIn: $isUserLoggedIn)
+            } else {
+                OnboardingView()
             }
-            
+        }
+        .onAppear {
+            isUserLoggedIn = Auth.auth().currentUser != nil
         }
     }
+}

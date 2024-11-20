@@ -15,44 +15,37 @@ struct OnboardingView: View {
                 Image("onboarding_background")
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .frame(width: UIScreen.main.bounds.width)
                     .edgesIgnoringSafeArea(.all)
                 
-                VStack {
+                VStack(spacing: 24) {
                     Spacer()
                     
                     // App Title
-                    Text("Weightx")
-                        .font(.system(size: 48, weight: .bold, design: .monospaced))
+                    Text("WeightX")
+                        .font(.system(size: 48, weight: .bold))
                         .foregroundColor(.white)
-                        .padding(.bottom, 16)
                     
                     // Subtitle
                     Text("Track your weight progress with ease")
                         .font(.title3)
-                        .bold()
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
-                        .padding(.horizontal, 24)
+                        .padding(.horizontal)
                     
                     Spacer()
-                    Spacer()
                     
-                    // Get Started Button (Navigates to SignUpView)
+                    // Get Started Button
                     NavigationLink(destination: SignUpView()) {
                         Text("Get Started")
                             .font(.headline)
                             .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.orange)
+                            .frame(maxWidth: .infinity, minHeight: 44) // Minimum touch target
+                            .background(Color.blue)
                             .cornerRadius(12)
                             .padding(.horizontal, 24)
                     }
-                    
-                    Spacer()
+                    .padding(.bottom, 32)
                 }
-                .padding(.vertical, 32)
             }
         }
     }

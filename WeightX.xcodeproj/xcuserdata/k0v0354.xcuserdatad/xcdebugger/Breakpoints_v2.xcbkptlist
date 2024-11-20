@@ -144,7 +144,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "186"
             endingLineNumber = "186"
-            landmarkName = "validatePhoneNumber()"
+            landmarkName = "signInWithGoogle()"
             landmarkType = "7">
             <Locations>
                <Location
@@ -222,7 +222,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "189"
             endingLineNumber = "189"
-            landmarkName = "validatePhoneNumber()"
+            landmarkName = "signInWithGoogle()"
             landmarkType = "7">
             <Locations>
                <Location
@@ -300,7 +300,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "199"
             endingLineNumber = "199"
-            landmarkName = "validatePhoneNumber()"
+            landmarkName = "signInWithGoogle()"
             landmarkType = "7">
             <Locations>
                <Location
@@ -348,7 +348,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "206"
             endingLineNumber = "206"
-            landmarkName = "signInWithPhoneNumber(phoneNumber:)"
+            landmarkName = "signInWithGoogle()"
             landmarkType = "7">
             <Locations>
                <Location
@@ -471,7 +471,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "215"
             endingLineNumber = "215"
-            landmarkName = "signInWithPhoneNumber(phoneNumber:)"
+            landmarkName = "signInWithGoogle()"
             landmarkType = "7">
             <Locations>
                <Location
@@ -533,9 +533,7 @@
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "222"
-            endingLineNumber = "222"
-            landmarkName = "signInWithPhoneNumber(phoneNumber:)"
-            landmarkType = "7">
+            endingLineNumber = "222">
             <Locations>
                <Location
                   uuid = "897F0E21-6623-46AF-9FF1-EA4E29994714 - e427ed88b83a1f11"
@@ -596,9 +594,7 @@
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "221"
-            endingLineNumber = "221"
-            landmarkName = "signInWithPhoneNumber(phoneNumber:)"
-            landmarkType = "7">
+            endingLineNumber = "221">
             <Locations>
                <Location
                   uuid = "31E0A69A-EDBD-46E2-A99B-4D65BB853589 - e427ed88b83a1ff0"
@@ -660,7 +656,7 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "214"
             endingLineNumber = "214"
-            landmarkName = "signInWithPhoneNumber(phoneNumber:)"
+            landmarkName = "signInWithGoogle()"
             landmarkType = "7">
             <Locations>
                <Location

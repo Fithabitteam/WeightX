@@ -11,110 +11,120 @@ import FirebaseAuth
 
 struct ProfileSettings2: View {
     @State private var bodyFatPercentage: String = ""
-    @State private var isShowingPopup: Bool = false
-    @State private var progress: Double = 0.333 // 33.3% for the second screen
+    @State private var showingInfoPopup = false
+    @State private var showProfileSettings3 = false
+    @State private var progress: Double = 0.333 // 33.3% for second screen
     @AppStorage("lastCompletedPage") private var lastCompletedPage: Int = 2
-
+    
     var body: some View {
-        VStack {
-            // Progress bar
-            ProgressView(value: progress)
-                .progressViewStyle(LinearProgressViewStyle())
-                .padding()
-
-            Form {
-                Section(header: Text("Body Composition")) {
-                    Text("What's your body composition? Enter body fat %")
-                    TextField("Body Fat %", text: $bodyFatPercentage)
-                        .keyboardType(.decimalPad)
-
-                    Button(action: {
-                        isShowingPopup.toggle()
-                    }) {
-                        Text("Need help figuring out your body fat percent? Click here")
-                            .foregroundColor(.blue)
-                    }
-                }
-
-                Button(action: {
-                    saveDataToFirebase()
-                    navigateToNextPage()
-                }) {
-                    Text("Continue")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
-                }
-                .padding()
-            }
-        }
-        .overlay(
-            // Popup for body fat images
-            Group {
-                if isShowingPopup {
-                    VStack {
-                        Image("BodyFatChart") // Replace with your actual image asset
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxWidth: 300)
-                        Button("Close") {
-                            isShowingPopup = false
+        NavigationView {
+            VStack(spacing: 24) {
+                // Progress Bar
+                ProgressView(value: progress)
+                    .progressViewStyle(LinearProgressViewStyle(tint: .blue))
+                    .padding()
+                
+                Form {
+                    Section(header: Text("Body Composition")) {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("What's your body fat percentage?")
+                                .font(.headline)
+                            
+                            HStack {
+                                TextField("Body Fat %", text: $bodyFatPercentage)
+                                    .keyboardType(.decimalPad)
+                                
+                                Text("%")
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Button(action: { showingInfoPopup = true }) {
+                                Label("How to measure body fat?", systemImage: "info.circle")
+                                    .font(.subheadline)
+                                    .foregroundColor(.blue)
+                            }
                         }
-                        .padding()
-                        .background(Color.gray)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.black.opacity(0.5))
-                    .edgesIgnoringSafeArea(.all)
                 }
+                
+                // Continue Button
+                Button(action: saveAndContinue) {
+                    Text("Continue")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .background(Color.blue)
+                        .cornerRadius(12)
+                }
+                .padding(.horizontal)
+                .padding(.bottom)
             }
-        )
-        .onAppear {
-            if lastCompletedPage > 2 {
-                navigateToPage(lastCompletedPage)
+            .navigationTitle("Profile Setup (2/6)")
+            .sheet(isPresented: $showingInfoPopup) {
+                BodyFatInfoView()
+            }
+            .fullScreenCover(isPresented: $showProfileSettings3) {
+                ProfileSettings3()
             }
         }
-        .navigationTitle("Profile Settings 2")
     }
-
-    private func saveDataToFirebase() {
-        // Firebase reference
-        guard let userId = Auth.auth().currentUser?.uid else { return }
-        let db = Firestore.firestore()
-
-        // Save data to Firebase
-        db.collection("users").document(userId).setData([
-            "bodyFatPercentage": bodyFatPercentage,
+    
+    private func saveAndContinue() {
+        // Validate input
+        guard let _ = Double(bodyFatPercentage) else { return }
+        
+        // Save to Firebase
+        saveToFirebase()
+        
+        // Update completion status
+        lastCompletedPage = 2
+        
+        // Navigate to next screen
+        showProfileSettings3 = true
+    }
+    
+    private func saveToFirebase() {
+        guard let user = Auth.auth().currentUser else { return }
+        
+        let userData: [String: Any] = [
+            "bodyFatPercentage": Double(bodyFatPercentage) ?? 0,
             "lastCompletedPage": 2
-        ], merge: true) { error in
-            if let error = error {
-                print("Error saving data: \(error.localizedDescription)")
-            } else {
-                print("Data saved successfully for ProfileSettings2")
+        ]
+        
+        let db = Firestore.firestore()
+        db.collection("users").document(user.uid).setData(userData, merge: true)
+    }
+}
+
+// Helper View for Body Fat Information
+struct BodyFatInfoView: View {
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("How to Measure Body Fat")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    
+                    // Add measurement methods and information here
+                    
+                    Spacer()
+                }
+                .padding()
             }
-        }
-        lastCompletedPage = 3
-    }
-
-    private func navigateToNextPage() {
-        // Logic to navigate to ProfileSettings3
-        if let window = UIApplication.shared.windows.first {
-            window.rootViewController = UIHostingController(rootView: ProfileSettings3())
-            window.makeKeyAndVisible()
+            .navigationBarItems(trailing: DismissButton())
         }
     }
+}
 
-    private func navigateToPage(_ page: Int) {
-        switch page {
-        case 3:
-            navigateToNextPage()
-        // Add cases for other pages as needed
-        default:
-            break
+struct DismissButton: View {
+    @Environment(\.presentationMode) var presentationMode
+    
+    var body: some View {
+        Button(action: { presentationMode.wrappedValue.dismiss() }) {
+            Image(systemName: "xmark.circle.fill")
+                .font(.title2)
+                .foregroundColor(.secondary)
         }
     }
 }

@@ -16,107 +16,106 @@ struct ProfileSettings1: View {
     @State private var height: String = ""
     @State private var isHeightInCM: Bool = true
     @State private var selectedSex: String = "Male"
-    @State private var birthDate: Date = Date()
-    let sexOptions = ["Male", "Female", "Other"]
-    @State private var progress: Double = 0.166 // 16.6% for the first screen
+    @State private var birthDate = Date()
+    @State private var showProfileSettings2 = false
+    @State private var progress: Double = 0.166 // 16.6% for first screen
     @AppStorage("lastCompletedPage") private var lastCompletedPage: Int = 1
-
+    
+    let sexOptions = ["Male", "Female", "Other"]
+    
     var body: some View {
-        VStack {
-            // Progress bar
-            ProgressView(value: progress)
-                .progressViewStyle(LinearProgressViewStyle())
-                .padding()
-
-            Form {
+        NavigationView {
+            VStack(spacing: 24) {
+                // Progress Bar
+                ProgressView(value: progress)
+                    .progressViewStyle(LinearProgressViewStyle(tint: .blue))
+                    .padding()
                 
-                Section(header: Text("Name")) {
-                    TextField("Enter your name", text: $name)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                }
-                
-                Section(header: Text("Sex")) {
-                    Picker("Select your sex", selection: $selectedSex) {
-                        ForEach(sexOptions, id: \.self) { sex in
-                            Text(sex).tag(sex)
+                Form {
+                    // Basic Information Section
+                    Section(header: Text("Basic Information")) {
+                        TextField("Full Name", text: $name)
+                            .textContentType(.name)
+                        
+                        DatePicker("Date of Birth",
+                                 selection: $birthDate,
+                                 in: ...Date(),
+                                 displayedComponents: .date)
+                        
+                        Picker("Sex", selection: $selectedSex) {
+                            ForEach(sexOptions, id: \.self) { option in
+                                Text(option).tag(option)
+                            }
                         }
                     }
-                    .pickerStyle(SegmentedPickerStyle())
-                }
-                Section(header: Text("Birthday")) {
-                    DatePicker("Select your birthdate", selection: $birthDate, displayedComponents: .date)
-                }
-                
-                // Height field
-                Section(header: Text("Height")) {
-                    TextField("Enter your height", text: $height)
-                        .keyboardType(.decimalPad)
-                    Toggle(isOn: $isHeightInCM) {
-                        Text("Use metric units (cm)")
+                    
+                    // Height Section
+                    Section(header: Text("Height")) {
+                        HStack {
+                            TextField("Height", text: $height)
+                                .keyboardType(.decimalPad)
+                            
+                            Picker("Unit", selection: $isHeightInCM) {
+                                Text("cm").tag(true)
+                                Text("ft").tag(false)
+                            }
+                            .pickerStyle(SegmentedPickerStyle())
+                            .frame(width: 100)
+                        }
                     }
                 }
-            
-                Button(action: {
-                    storedName = name
-                    saveDataToFirebase()
-                    navigateToNextPage()
-                }) {
+                
+                // Continue Button
+                Button(action: saveAndContinue) {
                     Text("Continue")
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
+                        .font(.headline)
                         .foregroundColor(.white)
-                        .cornerRadius(8)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .background(Color.blue)
+                        .cornerRadius(12)
                 }
-                .padding()
+                .padding(.horizontal)
+                .padding(.bottom)
+            }
+            .navigationTitle("Profile Setup (1/6)")
+            .fullScreenCover(isPresented: $showProfileSettings2) {
+                ProfileSettings2()
             }
         }
-        .onAppear {
-            if lastCompletedPage > 1 {
-                navigateToPage(lastCompletedPage)
-            }
-        }
-        .navigationTitle("Profile Settings 1")
     }
-
-    private func saveDataToFirebase() {
-        // Firebase reference
-        guard let userId = Auth.auth().currentUser?.uid else { return }
-        let db = Firestore.firestore()
-
-        // Save data to Firebase
-        db.collection("users").document(userId).setData([
+    
+    private func saveAndContinue() {
+        // Validate inputs
+        guard !name.isEmpty, !height.isEmpty else { return }
+        
+        // Save to UserDefaults
+        storedName = name
+        lastCompletedPage = 1
+        
+        // Save to Firebase (implementation needed)
+        saveToFirebase()
+        
+        // Navigate to next screen
+        showProfileSettings2 = true
+    }
+    
+    private func saveToFirebase() {
+        guard let user = Auth.auth().currentUser else { return }
+        
+        let userData: [String: Any] = [
             "name": name,
+            "dateOfBirth": birthDate,
             "sex": selectedSex,
-            "birthday": birthDate,
             "height": height,
-            "isHeightInCM": isHeightInCM,
+            "heightUnit": isHeightInCM ? "cm" : "ft",
             "lastCompletedPage": 1
-        ], merge: true) { error in
+        ]
+        
+        let db = Firestore.firestore()
+        db.collection("users").document(user.uid).setData(userData, merge: true) { error in
             if let error = error {
-                print("Error saving data: \(error.localizedDescription)")
-            } else {
-                print("Data saved successfully for ProfileSettings1")
+                print("Error saving user data: \(error.localizedDescription)")
             }
-        }
-        lastCompletedPage = 2
-    }
-
-    private func navigateToNextPage() {
-        // Logic to navigate to ProfileSettings2
-        if let window = UIApplication.shared.windows.first {
-            window.rootViewController = UIHostingController(rootView: ProfileSettings2())
-            window.makeKeyAndVisible()
-        }
-    }
-
-    private func navigateToPage(_ page: Int) {
-        switch page {
-        case 2:
-            navigateToNextPage()
-        // Add cases for other pages as needed
-        default:
-            break
         }
     }
 }
