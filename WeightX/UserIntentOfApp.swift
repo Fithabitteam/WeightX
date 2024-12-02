@@ -2,19 +2,22 @@
 //  UserIntentOfApp.swift
 //  WeightX
 //
-//  Created by Keerthanaa Vm on 20/11/24.
+//  Created by Keerthanaa Vm on 21/11/24.
 //
 
 import Foundation
 import SwiftUI
 import Firebase
 import FirebaseAuth
+import FirebaseFirestore
 
 struct UserIntentOfApp: View {
     @State private var showProfileSettings = false
     @State private var showHealthKitScreen = false
     @AppStorage("userIntent") private var userIntent: String = ""
     @Environment(\.presentationMode) var presentationMode
+    @State private var showError = false
+    @State private var errorMessage = ""
     
     var body: some View {
         NavigationView {
@@ -29,8 +32,7 @@ struct UserIntentOfApp: View {
                     title: "Log, track, analyse and get insights",
                     description: "Simple weight tracking with analytics and trends",
                     action: {
-                        userIntent = "basic"
-                        showHealthKitScreen = true
+                        saveUserIntent(intent: "logger")
                     }
                 )
                 
@@ -39,8 +41,7 @@ struct UserIntentOfApp: View {
                     title: "Goal based approach with guided program",
                     description: "Personalized program based on your goals and progress",
                     action: {
-                        userIntent = "guided"
-                        showProfileSettings = true
+                        saveUserIntent(intent: "goalguide")
                     }
                 )
                 
@@ -50,10 +51,52 @@ struct UserIntentOfApp: View {
             .navigationBarBackButtonHidden(true)
         }
         .fullScreenCover(isPresented: $showProfileSettings) {
-            ProfileSettings1()
+            GainLossMaintainView()
         }
         .fullScreenCover(isPresented: $showHealthKitScreen) {
-            ProfileSettings6()
+            HealthKitView()
+        }
+        .alert(isPresented: $showError) {
+            Alert(
+                title: Text("Error"),
+                message: Text(errorMessage),
+                dismissButton: .default(Text("OK"))
+            )
+        }
+    }
+    
+    private func saveUserIntent(intent: String) {
+        guard let userId = Auth.auth().currentUser?.uid else {
+            errorMessage = "User not authenticated"
+            showError = true
+            return
+        }
+        
+        let userData: [String: Any] = [
+            "userIntent": intent,
+            "intentSelectedAt": Timestamp(),
+            "lastUpdated": Timestamp()
+        ]
+        
+        let db = Firestore.firestore()
+        db.collection("users").document(userId).setData(userData, merge: true) { error in
+            if let error = error {
+                errorMessage = "Failed to save preference: \(error.localizedDescription)"
+                showError = true
+                return
+            }
+            
+            // Save to local storage
+            userIntent = intent
+            
+            // Navigate based on selection
+            DispatchQueue.main.async {
+                if intent == "logger" {
+                    showHealthKitScreen = true
+                } else {
+                    showProfileSettings = true
+                }
+            }
         }
     }
 }

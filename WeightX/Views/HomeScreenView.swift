@@ -45,7 +45,7 @@ struct HomeScreenView: View {
                             .foregroundColor(.secondary)
                         
                         if weeklyAverage > 0 {
-                            Text(String(format: "%.2f %@",
+                            Text(String(format: "%.2f %@", 
                                  UserSettings.shared.weightUnit.convert(weeklyAverage, from: .kg),
                                  UserSettings.shared.weightUnit.rawValue))
                                 .font(.title2)
@@ -53,7 +53,7 @@ struct HomeScreenView: View {
                             
                             if hasPreviousWeekData {
                                 let difference = weeklyAverage - previousWeekAverage
-                                Text(String(format: "%+.3f %@",
+                                Text(String(format: "%+.2f %@",
                                      UserSettings.shared.weightUnit.convert(difference, from: .kg),
                                      UserSettings.shared.weightUnit.rawValue))
                                     .font(.caption)
@@ -71,6 +71,23 @@ struct HomeScreenView: View {
                     .background(Color(.systemGray6))
                     .cornerRadius(12)
                 }
+                
+                Button(action: {
+                    showingYearPerformance = true
+                }) {
+                    HStack {
+                        Image(systemName: "chart.xyaxis.line")
+                        Text("Check Year Performance")
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue)
+                    .cornerRadius(12)
+                }
+                .padding(.horizontal)
+                .padding(.bottom)
             }
                    .padding(.horizontal)
                    
@@ -109,21 +126,8 @@ struct HomeScreenView: View {
                            Text("No data available")
                                .padding()
                        }
-                       Button(action: {
-                                           showingYearPerformance = true
-                                       }) {
-                                           Text("Check Year Performance")
-                                               .font(.headline)
-                                               .foregroundColor(.white)
-                                               .frame(maxWidth: .infinity)
-                                               .padding()
-                                               .background(Color.blue)
-                                               .cornerRadius(12)
-                                       }
-                                       .padding(.horizontal)
-                                       .padding(.bottom)
-                                   }
-                               }
+                   }
+               }
            .navigationTitle("Weight Log")
            .toolbar {
                ToolbarItem(placement: .navigationBarLeading) {
@@ -137,8 +141,8 @@ struct HomeScreenView: View {
                SettingsView(isShowing: $showingSettings, isUserLoggedIn: $isUserLoggedIn)
            }
            .fullScreenCover(isPresented: $showingYearPerformance) {
-                       YearPerformanceView()
-                   }
+               YearPerformanceView()
+           }
            .onAppear {
                fetchWeekData()
                fetchMonthData()
@@ -311,28 +315,7 @@ struct HomeScreenView: View {
             return "\(prefix)\(String(format: "%.0f g", convertedDifference * 1000))"
         }
     }
-    private func calculateAverages() {
-        let currentWeekWeights = weeklyWeights.values.filter { entry in
-            Calendar.current.isDate(entry.date, equalTo: currentWeek.startDate, toGranularity: .weekOfYear)
-        }
-        
-        if !currentWeekWeights.isEmpty {
-            let avgWeight = currentWeekWeights.reduce(0.0) { $0 + $1.weight } / Double(currentWeekWeights.count)
-            weeklyAverage = Double(String(format: "%.2f", avgWeight))!
-            
-            // Calculate previous week's average
-            let previousWeekStart = Calendar.current.date(byAdding: .day, value: -7, to: currentWeek.startDate)!
-            let previousWeekWeights = weeklyWeights.values.filter { entry in
-                Calendar.current.isDate(entry.date, equalTo: previousWeekStart, toGranularity: .weekOfYear)
-            }
-            
-            if !previousWeekWeights.isEmpty {
-                let prevAvg = previousWeekWeights.reduce(0.0) { $0 + $1.weight } / Double(previousWeekWeights.count)
-                previousWeekAverage = Double(String(format: "%.2f", prevAvg))!
-                hasPreviousWeekData = true
-            }
-        }
-    }
+    
     private func fetchWeekData() {
            guard let userId = Auth.auth().currentUser?.uid else { return }
            

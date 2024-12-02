@@ -80,9 +80,6 @@ struct OTPView: View {
             }
             .navigationBarBackButtonHidden(true)
             .navigationBarItems(leading: BackButton())
-            .fullScreenCover(isPresented: $showProfileSetting1) {
-                ProfileSettings1()
-            }
             .fullScreenCover(isPresented: $showUserIntent) {
                 UserIntentOfApp()
             }

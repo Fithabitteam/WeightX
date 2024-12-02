@@ -16,7 +16,7 @@ struct ContentView: View {
     var body: some View {
         Group {
             if isUserLoggedIn || Auth.auth().currentUser != nil {
-                HomeScreenView(isUserLoggedIn: $isUserLoggedIn)
+                MainTabView(isUserLoggedIn: $isUserLoggedIn)
             } else {
                 OnboardingView()
             }

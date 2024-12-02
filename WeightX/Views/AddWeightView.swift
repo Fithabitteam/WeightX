@@ -1,16 +1,3 @@
-//
-//  AddWeightView.swift
-//  WeightX
-//
-//  Created by Keerthanaa Vm on 20/11/24.
-//
-
-import Foundation
-import SwiftUI
-import Firebase
-import FirebaseFirestore
-import FirebaseAuth
-
 struct AddWeightView: View {
     @Environment(\.presentationMode) var presentationMode
     @State private var weight: String = ""
@@ -27,6 +14,7 @@ struct AddWeightView: View {
     init(preselectedDate: Date? = nil) {
         _date = State(initialValue: preselectedDate ?? Date())
     }
+    
     let availableTags = [
         "Morning",
         "Evening",
@@ -179,38 +167,4 @@ struct AddWeightView: View {
             selectedTags.insert(tag)
         }
     }
-}
-
-// Helper Views
-struct TagView: View {
-    let tag: String
-    var isSelected: Bool = true
-    var action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 4) {
-                Text(tag)
-                    .font(.subheadline)
-                if isSelected {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.caption)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(isSelected ? Color.blue : Color.gray.opacity(0.2))
-            .foregroundColor(isSelected ? .white : .primary)
-            .cornerRadius(16)
-        }
-        .buttonStyle(PlainButtonStyle())
-        .padding(.trailing, 4)
-    }
-}
-
-struct AddWeightView_Previews: PreviewProvider {
-    static var previews: some View {
-        AddWeightView()
-    }
-}
-
+} 

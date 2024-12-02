@@ -1,18 +1,11 @@
-//
-//  ProfileSettings6.swift
-//  WeightX
-//
-//  Created by Keerthanaa Vm on 01/11/24.
-//
-
 import SwiftUI
 import Firebase
 import HealthKit
 import FirebaseAuth
 
-struct ProfileSettings6: View {
+struct HealthKitView: View {
     @State private var progress: Double = 1.0 // 100% for the last screen
-    @AppStorage("lastCompletedPage") private var lastCompletedPage: Int = 6
+    @AppStorage("lastCompletedPage") private var lastCompletedPage: Int = 7
     @State private var showHomeScreen = false
     private var healthStore = HKHealthStore()
     
@@ -53,7 +46,8 @@ struct ProfileSettings6: View {
                     }
                 }
             }
-            .navigationTitle("Profile Setup (6/6)")
+            .navigationTitle("Profile Setup (7/7)")
+            .navigationBarBackButtonHidden(true)
             .fullScreenCover(isPresented: $showHomeScreen) {
                 ContentView()
             }
@@ -61,7 +55,6 @@ struct ProfileSettings6: View {
     }
     
     private func requestHealthKitPermission() {
-        // Request HealthKit authorization
         let typesToRead: Set<HKObjectType> = [
             HKObjectType.quantityType(forIdentifier: .bodyMass)!,
             HKObjectType.quantityType(forIdentifier: .bodyFatPercentage)!
@@ -75,7 +68,7 @@ struct ProfileSettings6: View {
         healthStore.requestAuthorization(toShare: typesToWrite, read: typesToRead) { success, error in
             DispatchQueue.main.async {
                 if success {
-                    lastCompletedPage = 6
+                    lastCompletedPage = 7
                     showHomeScreen = true
                 }
             }
@@ -83,8 +76,7 @@ struct ProfileSettings6: View {
     }
     
     private func skipToHome() {
-        lastCompletedPage = 6
+        lastCompletedPage = 7
         showHomeScreen = true
     }
-}
-
+} 

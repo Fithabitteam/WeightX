@@ -1,32 +1,17 @@
-//
-//  AddWeightView.swift
-//  WeightX
-//
-//  Created by Keerthanaa Vm on 20/11/24.
-//
-
-import Foundation
-import SwiftUI
-import Firebase
-import FirebaseFirestore
-import FirebaseAuth
-
-struct AddWeightView: View {
+struct EditWeightView: View {
+    let log: WeightLog
+    let onSave: () -> Void
     @Environment(\.presentationMode) var presentationMode
-    @State private var weight: String = ""
+    @State private var weight: String
     @State private var date: Date
-    @State private var notes: String = ""
-    @State private var selectedTags: Set<String> = []
+    @State private var notes: String
+    @State private var selectedTags: Set<String>
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var newTag: String = ""
     @State private var showingUnitInfo = false
     @State private var showingSettings = false
-    @FocusState private var isWeightFieldFocused: Bool
     
-    init(preselectedDate: Date? = nil) {
-        _date = State(initialValue: preselectedDate ?? Date())
-    }
     let availableTags = [
         "Morning",
         "Evening",
@@ -34,6 +19,18 @@ struct AddWeightView: View {
         "Pre-Workout",
         "Fasted"
     ]
+    
+    init(log: WeightLog, onSave: @escaping () -> Void) {
+        self.log = log
+        self.onSave = onSave
+        
+        // Convert weight from kg to current unit for display
+        let displayWeight = UserSettings.shared.weightUnit.convert(log.weight, from: .kg)
+        _weight = State(initialValue: String(format: "%.1f", displayWeight))
+        _date = State(initialValue: log.date)
+        _notes = State(initialValue: log.notes)
+        _selectedTags = State(initialValue: Set(log.tags))
+    }
     
     var body: some View {
         NavigationView {
@@ -44,7 +41,6 @@ struct AddWeightView: View {
                             .keyboardType(.decimalPad)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                             .frame(height: 56)
-                            .focused($isWeightFieldFocused)
                         
                         Text(UserSettings.shared.weightUnit.rawValue)
                             .foregroundColor(.secondary)
@@ -103,13 +99,13 @@ struct AddWeightView: View {
                         .frame(height: 100)
                 }
             }
-            .navigationTitle("Add Weight")
+            .navigationTitle("Edit Weight")
             .navigationBarItems(
                 leading: Button("Cancel") {
                     presentationMode.wrappedValue.dismiss()
                 },
                 trailing: Button("Save") {
-                    saveWeightEntry()
+                    saveChanges()
                 }
             )
             .alert("Weight Unit", isPresented: $showingUnitInfo) {
@@ -133,7 +129,7 @@ struct AddWeightView: View {
         }
     }
     
-    private func saveWeightEntry() {
+    private func saveChanges() {
         guard let weightValue = Double(weight) else {
             errorMessage = "Please enter a valid weight"
             showError = true
@@ -143,25 +139,23 @@ struct AddWeightView: View {
         // Convert to kg for storage if needed
         let weightInKg = UserSettings.shared.weightUnit == .kg ? weightValue : WeightUnit.kg.convert(weightValue, from: .lbs)
         
-        guard let userId = Auth.auth().currentUser?.uid else { return }
-        
         let db = Firestore.firestore()
         let data: [String: Any] = [
-            "userId": userId,
             "weight": weightInKg,  // Always store in kg
             "date": Timestamp(date: date),
             "notes": notes,
             "tags": Array(selectedTags),
-            "createdAt": Timestamp()
+            "updatedAt": Timestamp()
         ]
         
-        db.collection("weights").addDocument(data: data) { error in
+        db.collection("weights").document(log.id).updateData(data) { error in
             if let error = error {
-                errorMessage = "Failed to save: \(error.localizedDescription)"
+                errorMessage = "Failed to update: \(error.localizedDescription)"
                 showError = true
                 return
             }
             
+            onSave()
             presentationMode.wrappedValue.dismiss()
         }
     }
@@ -181,11 +175,10 @@ struct AddWeightView: View {
     }
 }
 
-// Helper Views
 struct TagView: View {
     let tag: String
     var isSelected: Bool = true
-    var action: () -> Void
+    let action: () -> Void
     
     var body: some View {
         Button(action: action) {
@@ -206,11 +199,4 @@ struct TagView: View {
         .buttonStyle(PlainButtonStyle())
         .padding(.trailing, 4)
     }
-}
-
-struct AddWeightView_Previews: PreviewProvider {
-    static var previews: some View {
-        AddWeightView()
-    }
-}
-
+} 

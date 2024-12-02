@@ -14,17 +14,7 @@ import GoogleSignIn
 class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Confirm Firebase is configured
-        if FirebaseApp.app() == nil {
-            FirebaseApp.configure()
-        }
-
-        // Request notification permissions
-       /* let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
-        UNUserNotificationCenter.current().requestAuthorization(options: authOptions) { _, _ in }
-        UNUserNotificationCenter.current().delegate = self
-        application.registerForRemoteNotifications()*/
-
+        FirebaseApp.configure()
         return true
     }
     

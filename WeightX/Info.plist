@@ -19,21 +19,13 @@
 			<string>GoogleSignIn</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.914726527828-manbcu15c7jtjshssn7i7dep2c9k1okd</string>
+				<string>com.googleusercontent.apps.949556094612-i9b16d2fatcbdci3b7hipkhcshpbvhl8</string>
 			</array>
 		</dict>
 	</array>
 	<key>FirebaseAppDelegateProxyEnabled</key>
 	<true/>
 	<key>UIBackgroundModes</key>
-	<array>
-		<string>fetch</string>
-		<string>processing</string>
-		<string>remote-notification</string>
-	</array>
-    <key>NSHealthShareUsageDescription</key>
-    <string>This app requires access to your health data to track and manage your weight goals.</string>
-    <key>NSHealthUpdateUsageDescription</key>
-    <string>This app requires permission to write data to your Health app for seamless data tracking.</string>
+	<array/>
 </dict>
 </plist>

@@ -59,18 +59,21 @@ struct SignUpView: View {
                 
                 // Continue Button
                 Button(action: validatePhoneNumber) {
-                    if isLoading {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    } else {
-                        Text("Continue")
-                            .font(.headline)
+                    HStack {
+                        if isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            Text("Continue")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                        }
                     }
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(Color.blue)
+                    .cornerRadius(12)
                 }
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .background(Color.blue)
-                .foregroundColor(.white)
-                .cornerRadius(12)
                 .padding(.horizontal)
                 .disabled(isLoading)
                 
@@ -128,8 +131,11 @@ struct SignUpView: View {
     func validatePhoneNumber() {
         let fullPhoneNumber = "\(countryCode)\(phoneNumber)"
         
-        // Basic phone number validation
-        if phoneNumber.isEmpty || phoneNumber.count != 10 {
+        // Enhanced phone number validation
+        let phoneNumberRegex = "^[0-9]{10}$"
+        let phoneNumberPredicate = NSPredicate(format: "SELF MATCHES %@", phoneNumberRegex)
+        
+        if !phoneNumberPredicate.evaluate(with: phoneNumber) {
             errorMessage = "Please enter a valid 10-digit phone number."
             showError = true
             return
@@ -141,17 +147,42 @@ struct SignUpView: View {
     
     // Firebase Phone Number Authentication
     func signInWithPhoneNumber(phoneNumber: String) {
+        print("Attempting to send OTP to: \(phoneNumber)") // Debug log
+        
         PhoneAuthProvider.provider().verifyPhoneNumber(phoneNumber, uiDelegate: nil) { verificationID, error in
-            isLoading = false
-            
-            if let error = error {
-                errorMessage = error.localizedDescription
-                showError = true
-                return
+            DispatchQueue.main.async {
+                self.isLoading = false
+                
+                if let error = error {
+                    print("Firebase Phone Auth Error: \(error)") // Debug log
+                    
+                    // More specific error messages
+                    let nsError = error as NSError
+                    switch nsError.code {
+                    case AuthErrorCode.invalidPhoneNumber.rawValue:
+                        self.errorMessage = "Invalid phone number format. Please check the number."
+                    case AuthErrorCode.quotaExceeded.rawValue:
+                        self.errorMessage = "Too many requests. Please try again later."
+                    case AuthErrorCode.invalidAppCredential.rawValue:
+                        self.errorMessage = "App verification failed. Please check app configuration."
+                    default:
+                        self.errorMessage = "Error: \(error.localizedDescription)"
+                    }
+                    
+                    self.showError = true
+                    return
+                }
+                
+                guard let verificationID = verificationID else {
+                    self.errorMessage = "Failed to get verification ID"
+                    self.showError = true
+                    return
+                }
+                
+                print("Successfully sent OTP, verification ID: \(verificationID)") // Debug log
+                UserDefaults.standard.set(verificationID, forKey: "authVerificationID")
+                self.showOTPView = true
             }
-            
-            UserDefaults.standard.set(verificationID, forKey: "authVerificationID")
-            showOTPView = true
         }
     }
     
