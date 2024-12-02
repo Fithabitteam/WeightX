@@ -2,23 +2,27 @@
 //  ContentView.swift
 //  WeightX
 //
-//  Created by Keerthanaa Vm on 02/10/24.
+//  Created by Keerthanaa Vm on 02/11/24.
 //
 
+import Foundation
 import SwiftUI
+import Firebase
+import FirebaseAuth
 
 struct ContentView: View {
+    @State private var isUserLoggedIn = false
+    
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        Group {
+            if isUserLoggedIn || Auth.auth().currentUser != nil {
+                MainTabView(isUserLoggedIn: $isUserLoggedIn)
+            } else {
+                OnboardingView()
+            }
         }
-        .padding()
+        .onAppear {
+            isUserLoggedIn = Auth.auth().currentUser != nil
+        }
     }
-}
-
-#Preview {
-    ContentView()
 }

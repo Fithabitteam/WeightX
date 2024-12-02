@@ -6,12 +6,20 @@
 //
 
 import SwiftUI
+import Firebase
+import GoogleSignIn
+import FirebaseAuth
 
 @main
 struct WeightXApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @State private var isUserSignedIn = false
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+                // Otherwise, show the onboarding/sign-in view
+                ContentView()
         }
     }
 }
+
