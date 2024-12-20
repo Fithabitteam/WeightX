@@ -26,6 +26,7 @@ struct AddWeightView: View {
     @State private var existingEntry: WeightEntry?
     @State private var isLoadingEntry = false
     private let initialDate: Date?
+    @StateObject private var tagManager = TagManager.shared
     
     init(preselectedDate: Date? = nil, initialWeight: String = "") {
         self.initialDate = preselectedDate
@@ -33,13 +34,16 @@ struct AddWeightView: View {
         _weight = State(initialValue: initialWeight)
     }
     
-    let availableTags = [
-        "Morning",
-        "Evening",
-        "Post-Workout",
-        "Pre-Workout",
-        "Fasted"
-    ]
+    var availableTags: [String] {
+        let defaultTags = [
+            "Morning",
+            "Evening",
+            "Post-Workout",
+            "Pre-Workout",
+            "Fasted"
+        ]
+        return defaultTags + tagManager.userTags
+    }
     
     var body: some View {
         NavigationView {
@@ -209,8 +213,18 @@ struct AddWeightView: View {
     
     private func addCustomTag() {
         guard !newTag.isEmpty else { return }
-        selectedTags.insert(newTag.trimmingCharacters(in: .whitespaces))
-        newTag = ""
+        let trimmedTag = newTag.trimmingCharacters(in: .whitespaces)
+        
+        Task {
+            do {
+                try await tagManager.addTag(trimmedTag)
+                selectedTags.insert(trimmedTag)
+                newTag = ""
+            } catch {
+                errorMessage = "Failed to save custom tag"
+                showError = true
+            }
+        }
     }
     
     private func toggleTag(_ tag: String) {

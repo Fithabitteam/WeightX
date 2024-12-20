@@ -15,14 +15,18 @@ struct EditWeightView: View {
     @State private var newTag: String = ""
     @State private var showingUnitInfo = false
     @State private var showingSettings = false
+    @StateObject private var tagManager = TagManager.shared
     
-    let availableTags = [
-        "Morning",
-        "Evening",
-        "Post-Workout",
-        "Pre-Workout",
-        "Fasted"
-    ]
+    var availableTags: [String] {
+        let defaultTags = [
+            "Morning",
+            "Evening",
+            "Post-Workout",
+            "Pre-Workout",
+            "Fasted"
+        ]
+        return defaultTags + tagManager.userTags
+    }
     
     init(log: WeightLog, onSave: @escaping () -> Void) {
         self.log = log
@@ -167,8 +171,18 @@ struct EditWeightView: View {
     
     private func addCustomTag() {
         guard !newTag.isEmpty else { return }
-        selectedTags.insert(newTag.trimmingCharacters(in: .whitespaces))
-        newTag = ""
+        let trimmedTag = newTag.trimmingCharacters(in: .whitespaces)
+        
+        Task {
+            do {
+                try await tagManager.addTag(trimmedTag)
+                selectedTags.insert(trimmedTag)
+                newTag = ""
+            } catch {
+                errorMessage = "Failed to save custom tag"
+                showError = true
+            }
+        }
     }
     
     private func toggleTag(_ tag: String) {

@@ -171,15 +171,9 @@ struct WeightLogRow: View {
             
             if !entry.tags.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack {
+                    HStack(spacing: 6) {
                         ForEach(entry.tags, id: \.self) { tag in
-                            Text(tag)
-                                .font(.caption)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.blue.opacity(0.1))
-                                .foregroundColor(.blue)
-                                .cornerRadius(12)
+                            TagChip(tag: tag)
                         }
                     }
                 }
@@ -199,5 +193,21 @@ struct WeightLogRow: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
         return formatter.string(from: date)
+    }
+}
+
+struct TagChip: View {
+    let tag: String
+    
+    var body: some View {
+        Text(tag)
+            .font(.caption)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.blue.opacity(0.1))
+            )
+            .foregroundColor(.blue)
     }
 }
