@@ -15,7 +15,6 @@ struct YearPerformanceView: View {
         let calendar = Calendar.current
         _selectedYear = State(initialValue: calendar.component(.year, from: Date()))
     }
-    
     private func calculateYearSummary() -> (cutWeeks: Int, gainWeeks: Int) {
         guard let yearData = yearData else { return (0, 0) }
         
