@@ -1,170 +1,192 @@
+//
+//  WeightLogHistoryView.swift
+//  WeightX
+//
+//  Created by Keerthanaa Vm on 30/11/24.
+//
+
 import SwiftUI
 import FirebaseFirestore
 import FirebaseAuth
 
-// First, create the EditState class if not already defined
-class EditState: ObservableObject {
-    @Published var entry: WeightLog?
-    @Published var isReady = false
-    
-    func reset() {
-        entry = nil
-        isReady = false
-    }
-    
-    func setEntry(_ log: WeightLog) {
-        entry = log
-        isReady = true
-    }
-}
-
 struct WeightLogHistoryView: View {
-    @State private var weightLogs: [WeightLog] = []
-    @State private var showingDeleteAlert = false
-    @State private var logToDelete: WeightLog?
+    @State private var weights: [WeightEntry] = []
+    @State private var isLoading = true
     @State private var showingEditSheet = false
     @StateObject private var editState = EditState()
-    @AppStorage("weightUnit") private var weightUnit: WeightUnit = .kg
     
     var body: some View {
         NavigationView {
-            List {
-                ForEach(weightLogs) { log in
-                    WeightLogCell(log: log)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            handleLogTap(log)
+            ZStack {
+                if weights.isEmpty && !isLoading {
+                    Text("No weight entries yet")
+                        .foregroundColor(.secondary)
+                } else {
+                    List {
+                        ForEach(weights) { entry in
+                            WeightLogRow(entry: entry)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    handleWeightTap(entry: entry)
+                                }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button(role: .destructive) {
+                                        deleteWeight(entry)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                    
+                                    Button {
+                                        handleWeightTap(entry: entry)
+                                    } label: {
+                                        Label("Edit", systemImage: "pencil")
+                                    }
+                                    .tint(.blue)
+                                }
                         }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            Button(role: .destructive) {
-                                logToDelete = log
-                                showingDeleteAlert = true
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                        }
+                    }
+                    .opacity(isLoading ? 0 : 1)
+                }
+                
+                if isLoading {
+                    ProgressView()
                 }
             }
-            .navigationTitle("Your Logs")
-            .alert("Delete Entry", isPresented: $showingDeleteAlert, presenting: logToDelete) { log in
-                Button("Cancel", role: .cancel) { }
-                Button("Delete", role: .destructive) {
-                    deleteWeightLog(log)
-                }
-            } message: { log in
-                Text("Are you sure you want to delete this entry?")
-            }
+            .navigationTitle("Weight Log")
             .sheet(isPresented: $showingEditSheet, onDismiss: {
                 editState.reset()
             }) {
-                if editState.isReady, let log = editState.entry {
-                    print("Presenting EditWeightView with log: \(log.id), weight: \(log.weight)")
-                    EditWeightView(log: log) {
-                        fetchWeightLogs()
-                        editState.reset()
+                Group {
+                    if editState.isReady, let entry = editState.entry {
+                        EditWeightView(log: entry) {
+                            editState.reset()
+                            fetchWeights()
+                        }
+                    } else {
+                        // Empty view while state is not ready
+                        Color.clear
                     }
                 }
             }
             .onAppear {
-                fetchWeightLogs()
-            }
-            .onChange(of: weightUnit) { _ in
-                fetchWeightLogs()
+                fetchWeights()
             }
         }
     }
     
-    private func handleLogTap(_ log: WeightLog) {
-        print("\nHandling log tap...")
+    private func handleWeightTap(entry: WeightEntry) {
+        print("\nHandling weight tap...")
         
         // Reset state and sheet
         showingEditSheet = false
         editState.reset()
         
+        print("Creating WeightLog for entry: weight=\(entry.weight)kg, id=\(entry.id)")
+        
+        // Create WeightLog
+        let log = WeightLog(
+            id: entry.id,
+            userId: entry.userId,
+            weight: entry.weight,
+            weightUnit: UserSettings.shared.weightUnit.rawValue,
+            date: entry.date,
+            tags: entry.tags,
+            notes: entry.notes,
+            createdAt: entry.createdAt
+        )
+        
         // Set entry in state object
         editState.setEntry(log)
-        print("Set log for editing: \(log.id), weight: \(log.weight)")
+        print("Set WeightLog in editState: weight=\(log.weight)kg, isReady=\(editState.isReady)")
         
-        // Show sheet only if state is ready
-        if editState.isReady {
-            print("State is ready, showing edit sheet")
-            showingEditSheet = true
-        } else {
-            print("ERROR: State not ready")
-        }
+        // Show sheet after state is set
+        print("Showing edit sheet")
+        showingEditSheet = true
     }
     
-    private func deleteWeightLog(_ log: WeightLog) {
-        guard let userId = Auth.auth().currentUser?.uid else { return }
-        
+    private func deleteWeight(_ entry: WeightEntry) {
         let db = Firestore.firestore()
-        db.collection("weights").document(log.id).delete { error in
+        db.collection("weights").document(entry.id).delete { error in
             if let error = error {
-                print("Error deleting log: \(error)")
-                return
+                print("Error deleting weight: \(error)")
             }
-            fetchWeightLogs()
         }
     }
     
-    private func fetchWeightLogs() {
-        guard let userId = Auth.auth().currentUser?.uid else { return }
+    private func fetchWeights() {
+        guard let userId = Auth.auth().currentUser?.uid else { 
+            DispatchQueue.main.async {
+                self.isLoading = false
+            }
+            return 
+        }
+        
+        DispatchQueue.main.async {
+            self.isLoading = true
+        }
         
         let db = Firestore.firestore()
         db.collection("weights")
             .whereField("userId", isEqualTo: userId)
             .order(by: "date", descending: true)
-            .getDocuments { snapshot, error in
-                if let error = error {
-                    print("Error fetching logs: \(error)")
-                    return
-                }
-                
-                print("Found \(snapshot?.documents.count ?? 0) logs")
-                weightLogs = snapshot?.documents.compactMap { doc in
-                    if let log = WeightLog(from: doc) {
-                        print("Parsed log: \(log.weight) \(log.weightUnit) for date: \(log.date)")
-                        return log
+            .addSnapshotListener { snapshot, error in  // Use snapshot listener for real-time updates
+                DispatchQueue.main.async {
+                    if let error = error {
+                        print("Error fetching weights: \(error)")
+                        self.isLoading = false
+                        return
                     }
-                    return nil
-                } ?? []
+                    
+                    self.weights = snapshot?.documents.compactMap { WeightEntry(from: $0) } ?? []
+                    self.isLoading = false
+                    
+                    // Debug print
+                    print("Fetched \(self.weights.count) weights")
+                    self.weights.forEach { entry in
+                        print("Weight: \(entry.weight) \(entry.weightUnit) on \(entry.date)")
+                    }
+                }
             }
     }
 }
 
-struct WeightLogCell: View {
-    let log: WeightLog
+struct WeightLogRow: View {
+    let entry: WeightEntry
     @AppStorage("weightUnit") private var weightUnit: WeightUnit = .kg
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(formattedDate)
+                Text(String(format: "%.2f %@",
+                     weightUnit.convert(entry.weight, from: .kg),
+                     weightUnit.rawValue))
                     .font(.headline)
+                
                 Spacer()
-                Text(formattedWeight)
-                    .font(.title3)
-                    .fontWeight(.bold)
+                
+                Text(formatDate(entry.date))
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
             }
             
-            if !log.tags.isEmpty {
+            if !entry.tags.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack {
-                        ForEach(log.tags, id: \.self) { tag in
+                        ForEach(entry.tags, id: \.self) { tag in
                             Text(tag)
                                 .font(.caption)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
                                 .background(Color.blue.opacity(0.1))
                                 .foregroundColor(.blue)
-                                .cornerRadius(8)
+                                .cornerRadius(12)
                         }
                     }
                 }
             }
             
-            if !log.notes.isEmpty {
-                Text(log.notes)
+            if !entry.notes.isEmpty {
+                Text(entry.notes)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -172,15 +194,10 @@ struct WeightLogCell: View {
         .padding(.vertical, 4)
     }
     
-    private var formattedDate: String {
+    private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
-        return formatter.string(from: log.date)
+        return formatter.string(from: date)
     }
-    
-    private var formattedWeight: String {
-        let convertedWeight = weightUnit.convert(log.weight, from: .kg)
-        return String(format: "%.1f %@", convertedWeight, weightUnit.rawValue)
-    }
-} 
+}

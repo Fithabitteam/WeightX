@@ -1,4 +1,6 @@
 import SwiftUI
+import FirebaseFirestore
+import FirebaseAuth
 
 struct UserSexView: View {
     @State private var selectedSex: String = ""
@@ -137,92 +139,3 @@ struct GoalGuideView: View {
     }
 }
 
-struct UserMotivationView: View {
-    @State private var selectedMotivations: Set<String> = []
-    @Environment(\.presentationMode) var presentationMode
-    
-    let motivationOptions = [
-        "Better Health",
-        "More Energy",
-        "Look Better",
-        "Feel Confident",
-        "Athletic Performance",
-        "Mental Wellbeing"
-    ]
-    
-    var body: some View {
-        VStack(spacing: 24) {
-            Text("What motivates you?")
-                .font(.title2)
-                .fontWeight(.bold)
-            
-            ScrollView {
-                VStack(spacing: 16) {
-                    ForEach(motivationOptions, id: \.self) { motivation in
-                        Button(action: { toggleMotivation(motivation) }) {
-                            MotivationCard(
-                                title: motivation,
-                                isSelected: selectedMotivations.contains(motivation)
-                            )
-                        }
-                    }
-                }
-                .padding()
-            }
-            
-            Button(action: saveAndDismiss) {
-                Text("Save")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .background(selectedMotivations.isEmpty ? Color.gray : Color.blue)
-                    .cornerRadius(12)
-            }
-            .disabled(selectedMotivations.isEmpty)
-            .padding()
-        }
-        .navigationTitle("Update Motivations")
-        .onAppear(perform: loadCurrentMotivations)
-    }
-    
-    private func toggleMotivation(_ motivation: String) {
-        if selectedMotivations.contains(motivation) {
-            selectedMotivations.remove(motivation)
-        } else {
-            selectedMotivations.insert(motivation)
-        }
-    }
-    
-    private func loadCurrentMotivations() {
-        guard let userId = Auth.auth().currentUser?.uid else { return }
-        
-        let db = Firestore.firestore()
-        db.collection("users").document(userId).getDocument { snapshot, error in
-            if let error = error {
-                print("Error loading motivations: \(error)")
-                return
-            }
-            
-            if let data = snapshot?.data(),
-               let motivations = data["motivations"] as? [String] {
-                selectedMotivations = Set(motivations)
-            }
-        }
-    }
-    
-    private func saveAndDismiss() {
-        guard !selectedMotivations.isEmpty,
-              let userId = Auth.auth().currentUser?.uid else { return }
-        
-        let db = Firestore.firestore()
-        db.collection("users").document(userId).setData([
-            "motivations": Array(selectedMotivations)
-        ], merge: true) { error in
-            if let error = error {
-                print("Error saving motivations: \(error)")
-                return
-            }
-            presentationMode.wrappedValue.dismiss()
-        }
-    }
-} 

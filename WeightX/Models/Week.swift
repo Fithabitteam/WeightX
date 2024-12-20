@@ -1,3 +1,10 @@
+//
+//  Week.swift
+//  WeightX
+//
+//  Created by Keerthanaa Vm on 24/11/24.
+//
+
 import Foundation
 
 struct Week {
@@ -60,4 +67,4 @@ struct Week {
         
         return dates
     }
-} 
+}

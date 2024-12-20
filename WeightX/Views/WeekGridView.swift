@@ -1,4 +1,14 @@
-// First, create a class to hold the edit state
+//
+//  WeekGridView.swift
+//  WeightX
+//
+//  Created by Keerthanaa Vm on 24/11/24.
+//
+
+import Foundation
+import SwiftUI
+import FirebaseFirestore
+
 class EditState: ObservableObject {
     @Published var entry: WeightLog?
     @Published var date: Date?
@@ -45,12 +55,10 @@ struct WeeklyWeightGrid: View {
         }) {
             if editState.isReady {
                 if let entry = editState.entry {
-                    print("Presenting EditWeightView with log: \(entry.id), weight: \(entry.weight)")
                     EditWeightView(log: entry) {
                         editState.reset()
                     }
                 } else if let date = editState.date {
-                    print("Presenting AddWeightView with date: \(date)")
                     AddWeightView(preselectedDate: date)
                 }
             }
@@ -59,6 +67,12 @@ struct WeeklyWeightGrid: View {
     
     private func handleDayTap(date: Date, entry: WeightEntry?) {
         print("\nHandling day tap...")
+        
+        // Don't allow weight entry for future dates
+        if date > Calendar.current.startOfDay(for: Date()) {
+            print("Cannot add weight for future date")
+            return
+        }
         
         // Reset state and sheet
         showingEditSheet = false
@@ -82,27 +96,13 @@ struct WeeklyWeightGrid: View {
             // Set entry in state object
             editState.setEntry(log)
             print("Created and set WeightLog: id=\(log.id), weight=\(log.weight)")
-            
-            // Show sheet only if state is ready
-            if editState.isReady {
-                print("State is ready, showing edit sheet")
-                showingEditSheet = true
-            } else {
-                print("ERROR: State not ready")
-            }
         } else {
             print("No existing entry, setting up for new entry")
             editState.setDate(date)
             print("Selected date set: \(date)")
-            
-            // Show sheet only if state is ready
-            if editState.isReady {
-                print("State is ready, showing add sheet")
-                showingEditSheet = true
-            } else {
-                print("ERROR: State not ready")
-            }
         }
+        
+        showingEditSheet = true
     }
     
     private func findWeight(for date: Date) -> WeightEntry? {
@@ -124,6 +124,10 @@ struct DayCell: View {
     let date: Date
     let weightEntry: WeightEntry?
     @AppStorage("weightUnit") private var weightUnit: WeightUnit = .kg
+    
+    private var isFutureDate: Bool {
+        date > Calendar.current.startOfDay(for: Date())
+    }
     
     var body: some View {
         VStack(spacing: 4) {
@@ -156,7 +160,8 @@ struct DayCell: View {
         }
         .frame(height: 90)
         .frame(maxWidth: .infinity)
-        .background(Color(.systemGray6))
+        .background(isFutureDate ? Color(.systemGray5) : Color(.systemGray6))
+        .opacity(isFutureDate ? 0.7 : 1.0)
         .cornerRadius(8)
     }
-} 
+}

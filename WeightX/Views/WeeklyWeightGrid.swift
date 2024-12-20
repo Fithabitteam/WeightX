@@ -1,3 +1,11 @@
+//
+//  WeeklyWeightGrid.swift
+//  WeightX
+//
+//  Created by Keerthanaa Vm on 26/11/24.
+//
+
+/*import Foundation
 import SwiftUI
 import FirebaseFirestore
 
@@ -52,4 +60,4 @@ struct WeeklyWeightGrid: View {
             calendar.isDate(calendar.startOfDay(for: entryDate), inSameDayAs: targetDay)
         }?.value
     }
-} 
+}*/

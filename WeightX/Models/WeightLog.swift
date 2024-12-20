@@ -1,3 +1,10 @@
+//
+//  WeightLog.swift
+//  WeightX
+//
+//  Created by Keerthanaa Vm on 30/11/24.
+//
+import SwiftUI
 import FirebaseFirestore
 
 struct WeightLog: Identifiable {
@@ -9,6 +16,10 @@ struct WeightLog: Identifiable {
     let tags: [String]
     let notes: String
     let createdAt: Date
+    
+    var displayWeight: Double {
+        UserSettings.shared.weightUnit.convert(weight, from: .kg)
+    }
     
     init?(from document: QueryDocumentSnapshot) {
         let data = document.data()
@@ -39,4 +50,15 @@ struct WeightLog: Identifiable {
         self.notes = notes
         self.createdAt = createdAt
     }
-} 
+    
+    init(from entry: WeightEntry) {
+        self.id = entry.id
+        self.userId = entry.userId
+        self.weight = entry.weight
+        self.weightUnit = entry.weightUnit
+        self.date = entry.date
+        self.tags = entry.tags
+        self.notes = entry.notes
+        self.createdAt = entry.createdAt
+    }
+}

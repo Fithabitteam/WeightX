@@ -1,3 +1,9 @@
+/*import Foundation
+import SwiftUI
+import Firebase
+import FirebaseAuth
+import FirebaseFirestore
+
 struct TargetWeightView: View {
     @Binding var currentStep: OnboardingStep
     @AppStorage("targetWeight") private var targetWeight: Double = 0.0
@@ -58,4 +64,4 @@ struct TargetWeightView: View {
         targetWeight = weightValue
         currentStep = .targetBodyFat
     }
-} 
+} */

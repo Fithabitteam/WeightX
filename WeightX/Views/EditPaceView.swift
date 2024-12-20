@@ -96,4 +96,4 @@ struct EditPaceView_Previews: PreviewProvider {
             EditPaceView(currentPace: "Beginner")
         }
     }
-} 
+}

@@ -2,39 +2,68 @@ import SwiftUI
 
 struct WeekSelectorView: View {
     @Binding var currentWeek: Week
-    let onWeekChange: () -> Void
+    var onWeekChange: () -> Void
     
     var body: some View {
         HStack {
-            Button(action: {
-                currentWeek = currentWeek.previous()
-                onWeekChange()
-            }) {
+            Button(action: previousWeek) {
                 Image(systemName: "chevron.left")
-                    .font(.title3)
                     .foregroundColor(.blue)
+                    .imageScale(.large)
             }
             
             Spacer()
             
-            Text(currentWeek.dateString)
-                .font(.headline)
+            VStack(spacing: 4) {
+                Text(weekRangeText)
+                    .font(.headline)
+                
+                if !isCurrentWeek {
+                    Button("Go to Current Week") {
+                        let currentWeekDates = Week.getCurrentWeek()
+                        currentWeek = currentWeekDates
+                        onWeekChange()
+                    }
+                    .font(.caption)
+                    .foregroundColor(.blue)
+                }
+            }
             
             Spacer()
             
-            Button(action: {
-                if currentWeek.startDate < Week.getCurrentWeek().startDate {
-                    currentWeek = currentWeek.next()
-                    onWeekChange()
-                }
-            }) {
+            Button(action: nextWeek) {
                 Image(systemName: "chevron.right")
-                    .font(.title3)
-                    .foregroundColor(currentWeek.startDate < Week.getCurrentWeek().startDate ? .blue : .gray)
+                    .foregroundColor(.blue)
+                    .imageScale(.large)
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
     }
-} 
+    
+    private var isCurrentWeek: Bool {
+        Calendar.current.isDate(currentWeek.startDate, equalTo: Week.getCurrentWeek().startDate, toGranularity: .weekOfYear)
+    }
+    
+    private var weekRangeText: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d"
+        let startText = formatter.string(from: currentWeek.startDate)
+        let endText = formatter.string(from: currentWeek.endDate)
+        return "\(startText) - \(endText)"
+    }
+    
+    private func previousWeek() {
+        if let newStartDate = Calendar.current.date(byAdding: .day, value: -7, to: currentWeek.startDate),
+           let newEndDate = Calendar.current.date(byAdding: .day, value: 6, to: newStartDate) {
+            currentWeek = Week(startDate: newStartDate, endDate: newEndDate)
+            onWeekChange()
+        }
+    }
+    
+    private func nextWeek() {
+        if let newStartDate = Calendar.current.date(byAdding: .day, value: 7, to: currentWeek.startDate),
+           let newEndDate = Calendar.current.date(byAdding: .day, value: 6, to: newStartDate) {
+            currentWeek = Week(startDate: newStartDate, endDate: newEndDate)
+            onWeekChange()
+        }
+    }
+}

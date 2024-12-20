@@ -1,12 +1,18 @@
+//
+//  WeightEntry.swift
+//  WeightX
+//
+//  Created by Keerthanaa Vm on 24/11/24.
+//
 import Foundation
 import FirebaseFirestore
 
-struct WeightEntry {
+struct WeightEntry: Identifiable {
     let id: String
     let userId: String
     let weight: Double
+    let weightUnit: String
     let date: Date
-    let weightUnit: WeightUnit
     let tags: [String]
     let notes: String
     let createdAt: Date
@@ -30,25 +36,9 @@ struct WeightEntry {
         self.createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? timestamp.dateValue()
     }
     
-    init(id: String, weight: Double, date: Date, userId: String = "") {
-        self.id = id
-        self.userId = userId
-        self.weight = weight
-        self.date = date
-        self.weightUnit = .kg
-        self.tags = []
-        self.notes = ""
-        self.createdAt = Date()
+    var displayWeight: String {
+        String(format: "%.2f %@",
+               UserSettings.shared.weightUnit.convert(weight, from: .kg),
+               weightUnit)
     }
-    
-    init(forGraph id: String = UUID().uuidString, weight: Double, date: Date) {
-        self.id = id
-        self.userId = ""
-        self.weight = weight
-        self.date = date
-        self.weightUnit = .kg
-        self.tags = []
-        self.notes = ""
-        self.createdAt = date
-    }
-} 
+}

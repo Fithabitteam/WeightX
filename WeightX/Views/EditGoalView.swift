@@ -3,70 +3,60 @@ import FirebaseFirestore
 import FirebaseAuth
 
 struct EditGoalView: View {
-    let currentGoal: String
     @State private var selectedGoal: String
-    @Environment(\.presentationMode) var presentationMode
+    @Environment(\.dismiss) var dismiss
+    
+    private let goalOptions = [
+        (title: "Weight Loss", description: "Reduce body weight and fat", icon: "arrow.down.circle"),
+        (title: "Weight Gain", description: "Build muscle and increase weight", icon: "arrow.up.circle"),
+        (title: "Maintain Weight", description: "Keep current weight stable", icon: "circle")
+    ]
     
     init(currentGoal: String) {
-        self.currentGoal = currentGoal
         _selectedGoal = State(initialValue: currentGoal)
     }
     
     var body: some View {
-        Form {
-            Section {
-                Button(action: { selectedGoal = "Weight Loss" }) {
-                    HStack {
-                        Text("Weight Loss")
-                        Spacer()
-                        if selectedGoal == "Weight Loss" {
-                            Image(systemName: "checkmark")
-                                .foregroundColor(.blue)
+        VStack(spacing: 24) {
+            // Progress bar (1/7)
+            ProgressView(value: 0.143)
+                .progressViewStyle(LinearProgressViewStyle(tint: .blue))
+                .padding()
+            
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    Text("What's your goal?")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                    
+                    ForEach(goalOptions, id: \.title) { goal in
+                        GoalButton(
+                            title: goal.title,
+                            description: goal.description,
+                            icon: goal.icon,
+                            isSelected: selectedGoal == goal.title
+                        ) {
+                            selectedGoal = goal.title
                         }
                     }
                 }
-                
-                Button(action: { selectedGoal = "Weight Gain" }) {
-                    HStack {
-                        Text("Weight Gain")
-                        Spacer()
-                        if selectedGoal == "Weight Gain" {
-                            Image(systemName: "checkmark")
-                                .foregroundColor(.blue)
-                        }
-                    }
-                }
-                
-                Button(action: { selectedGoal = "Maintain Weight" }) {
-                    HStack {
-                        Text("Maintain Weight")
-                        Spacer()
-                        if selectedGoal == "Maintain Weight" {
-                            Image(systemName: "checkmark")
-                                .foregroundColor(.blue)
-                        }
-                    }
-                }
+                .padding()
             }
-        }
-        .navigationTitle("Edit Goal")
-        .navigationBarItems(trailing: Button("Save") {
-            saveGoal()
-        })
-    }
-    
-    private func saveGoal() {
-        guard let userId = Auth.auth().currentUser?.uid else { return }
-        
-        let db = Firestore.firestore()
-        db.collection("users").document(userId).updateData([
-            "weightGoal": selectedGoal
-        ]) { error in
-            if let error = error {
-                print("Error updating goal: \(error)")
-                return
+            
+            Spacer()
+            
+            NavigationLink(destination: UserMotivationView(selectedGoal: selectedGoal)) {
+                Text("Next")
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(selectedGoal.isEmpty ? Color.gray : Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
             }
-            presentationMode.wrappedValue.dismiss()
+            .disabled(selectedGoal.isEmpty)
+            .padding()
         }
+        .navigationTitle("Edit Goal (1/7)")
+        .navigationBarBackButtonHidden(false)
     }
-} 
+}

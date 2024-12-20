@@ -55,22 +55,17 @@ struct HealthKitView: View {
     }
     
     private func requestHealthKitPermission() {
-        let typesToRead: Set<HKObjectType> = [
-            HKObjectType.quantityType(forIdentifier: .bodyMass)!,
-            HKObjectType.quantityType(forIdentifier: .bodyFatPercentage)!
-        ]
-        
-        let typesToWrite: Set<HKSampleType> = [
-            HKObjectType.quantityType(forIdentifier: .bodyMass)!,
-            HKObjectType.quantityType(forIdentifier: .bodyFatPercentage)!
-        ]
-        
-        healthStore.requestAuthorization(toShare: typesToWrite, read: typesToRead) { success, error in
-            DispatchQueue.main.async {
-                if success {
-                    lastCompletedPage = 7
-                    showHomeScreen = true
+        Task {
+            do {
+                let success = try await HealthKitManager.shared.requestAuthorization()
+                DispatchQueue.main.async {
+                    if success {
+                        lastCompletedPage = 7
+                        showHomeScreen = true
+                    }
                 }
+            } catch {
+                print("HealthKit authorization failed: \(error)")
             }
         }
     }

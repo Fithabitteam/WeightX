@@ -2,96 +2,75 @@ import SwiftUI
 
 struct MonthSelectorView: View {
     @Binding var selectedDate: Date
-    @State private var showingMonthPicker = false
+    let calendar = Calendar.current
     
     var body: some View {
-        Button(action: { showingMonthPicker = true }) {
-            HStack {
-                Text(monthYearString(from: selectedDate))
-                    .font(.headline)
-                Image(systemName: "chevron.down")
+        HStack {
+            Button(action: previousMonth) {
+                Image(systemName: "chevron.left")
+                    .foregroundColor(.blue)
+                    .imageScale(.large)
             }
-            .foregroundColor(.primary)
-            .padding(.vertical, 8)
+            
+            Spacer()
+            
+            Menu {
+                ForEach(-12...0, id: \.self) { monthOffset in
+                    let date = calendar.date(byAdding: .month, value: monthOffset, to: Date())!
+                    Button(action: {
+                        selectedDate = date
+                    }) {
+                        Text(formatDate(date))
+                            .foregroundColor(calendar.isDate(date, equalTo: selectedDate, toGranularity: .month) ? .blue : .primary)
+                    }
+                }
+            } label: {
+                Text(formatDate(selectedDate))
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                    .frame(minWidth: 120)
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(8)
+            }
+            
+            Spacer()
+            
+            Button(action: nextMonth) {
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.blue)
+                    .imageScale(.large)
+            }
+            .disabled(isFutureMonth)
         }
-        .sheet(isPresented: $showingMonthPicker) {
-            MonthPickerView(selectedDate: $selectedDate)
+        .padding(.horizontal)
+    }
+    
+    private var isFutureMonth: Bool {
+        let currentMonth = calendar.startOfDay(for: Date())
+        let selectedMonth = calendar.startOfDay(for: selectedDate)
+        return calendar.compare(selectedMonth, to: currentMonth, toGranularity: .month) == .orderedDescending
+    }
+    
+    private func previousMonth() {
+        if let newDate = calendar.date(byAdding: .month, value: -1, to: selectedDate) {
+            selectedDate = newDate
         }
     }
     
-    private func monthYearString(from date: Date) -> String {
+    private func nextMonth() {
+        if let newDate = calendar.date(byAdding: .month, value: 1, to: selectedDate),
+           !isFutureMonth {
+            selectedDate = newDate
+        }
+    }
+    
+    private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "MMMM yyyy"
         return formatter.string(from: date)
     }
 }
 
-struct MonthPickerView: View {
-    @Binding var selectedDate: Date
-    @Environment(\.presentationMode) var presentationMode
-    @State private var selectedYear: Int
-    @State private var selectedMonth: Int
-    
-    init(selectedDate: Binding<Date>) {
-        self._selectedDate = selectedDate
-        let calendar = Calendar.current
-        _selectedYear = State(initialValue: calendar.component(.year, from: selectedDate.wrappedValue))
-        _selectedMonth = State(initialValue: calendar.component(.month, from: selectedDate.wrappedValue))
-    }
-    
-    var body: some View {
-        NavigationView {
-            VStack {
-                // Year Picker
-                Picker("Year", selection: $selectedYear) {
-                    ForEach((2020...Calendar.current.component(.year, from: Date())), id: \.self) { year in
-                        Text(String(year)).tag(year)
-                    }
-                }
-                .pickerStyle(.wheel)
-                
-                // Month Picker
-                Picker("Month", selection: $selectedMonth) {
-                    ForEach(1...12, id: \.self) { month in
-                        Text(monthName(month)).tag(month)
-                    }
-                }
-                .pickerStyle(.wheel)
-            }
-            .navigationTitle("Select Month")
-            .navigationBarItems(
-                leading: Button("Cancel") {
-                    presentationMode.wrappedValue.dismiss()
-                },
-                trailing: Button("Done") {
-                    updateSelectedDate()
-                    presentationMode.wrappedValue.dismiss()
-                }
-            )
-        }
-    }
-    
-    private func monthName(_ month: Int) -> String {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "MMMM"
-        guard let date = Calendar.current.date(from: DateComponents(year: 2000, month: month)) else {
-            return ""
-        }
-        return dateFormatter.string(from: date)
-    }
-    
-    private func updateSelectedDate() {
-        var components = DateComponents()
-        components.year = selectedYear
-        components.month = selectedMonth
-        components.day = 1
-        components.hour = 0
-        components.minute = 0
-        components.second = 0
-        
-        if let date = Calendar.current.date(from: components) {
-            print("Updating selected date to: \(date)")
-            selectedDate = date
-        }
-    }
-} 
+

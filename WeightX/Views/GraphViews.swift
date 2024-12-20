@@ -115,13 +115,13 @@ struct WeightTrendGraphView: View {
                             x: .value("Week", "Week \(week.weekNumber)"),
                             y: .value("Average", weightUnit.convert(week.average, from: .kg))
                         )
-                        .foregroundStyle(Color.green)
+                        .foregroundStyle(Color.blue)
                         
                         PointMark(
                             x: .value("Week", "Week \(week.weekNumber)"),
                             y: .value("Average", weightUnit.convert(week.average, from: .kg))
                         )
-                        .foregroundStyle(Color.green)
+                        .foregroundStyle(Color.blue)
                     }
                 }
                 .frame(height: 200)
@@ -135,85 +135,3 @@ struct WeightTrendGraphView: View {
         }
     }
 }
-
-struct WeightDifferenceGraphView: View {
-    let monthData: MonthData
-    @State private var showingFullScreen = false
-    @State private var selectedPoint: (weekLabel: String, difference: Double)?
-    @AppStorage("weightUnit") private var weightUnit: WeightUnit = .kg
-    
-    private func formatDifference(_ difference: Double) -> String {
-        switch weightUnit {
-        case .kg:
-            // Convert to grams
-            let grams = difference * 1000
-            return String(format: "%.0fg", grams)
-        case .lbs:
-            // Keep in lbs with more precision
-            return String(format: "%.2f lbs", weightUnit.convert(difference, from: .kg))
-        }
-    }
-    
-    private func getWeekLabel(_ weekNumber: Int) -> String {
-        return "Week \(weekNumber)"
-    }
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Weekly Average Difference")
-                    .font(.headline)
-                Spacer()
-                Button(action: { showingFullScreen = true }) {
-                    Image(systemName: "arrow.up.left.and.arrow.down.right")
-                }
-            }
-            
-            differenceChart
-        }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
-        .fullScreenCover(isPresented: $showingFullScreen) {
-            FullScreenGraphView(title: "Weekly Average Difference") {
-                differenceChart
-            }
-        }
-    }
-    
-    private var differenceChart: some View {
-        Group {
-            if !monthData.weeklyDifferences.isEmpty {
-                let maxDiff = monthData.weeklyDifferences.map { abs($0.difference) }.max() ?? 0
-                let yScale = maxDiff * 1.2 // 20% padding
-                
-                Chart {
-                    ForEach(monthData.weeklyDifferences, id: \.weekNumber) { diff in
-                        BarMark(
-                            x: .value("Week", getWeekLabel(diff.weekNumber)),
-                            y: .value("Difference", diff.difference)
-                        )
-                        .foregroundStyle(diff.difference >= 0 ? Color.red : Color.green)
-                        .annotation(position: .overlay) {
-                            Text(formatDifference(diff.difference))
-                                .font(.caption)
-                                .foregroundColor(.white)
-                                .padding(.vertical, 2)
-                                .padding(.horizontal, 4)
-                        }
-                    }
-                    
-                    RuleMark(y: .value("Zero", 0))
-                        .foregroundStyle(Color.gray.opacity(0.5))
-                }
-                .frame(height: 200)
-                .chartYScale(domain: -yScale...yScale)
-            } else {
-                Text("Need at least two weeks of data to show differences")
-                    .frame(height: 200)
-                    .frame(maxWidth: .infinity)
-                    .background(Color(.systemGray6))
-            }
-        }
-    }
-} 

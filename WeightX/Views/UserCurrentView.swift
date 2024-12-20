@@ -2,17 +2,50 @@ import SwiftUI
 import Firebase
 import FirebaseAuth
 
-struct UserTargetView: View {
+struct UserCurrentView: View {
     let selectedGoal: String
     let userSex: String
     let motivations: [String]
-    @State private var targetWeight: String = ""
-    @State private var targetBodyFat: String = ""
+    let height: Double
+    @State private var currentWeight: String = ""
+    @State private var bodyFatPercentage: String = ""
     @State private var isKg: Bool = true
     @State private var showingBFGuide = false
     @State private var showNextScreen = false
-    @State private var progress: Double = 0.833 // 83.3% for fifth screen
-    @AppStorage("lastCompletedPage") private var lastCompletedPage: Int = 5
+    @State private var progress: Double = 0.666 // 66.6% for fourth screen
+    @AppStorage("lastCompletedPage") private var lastCompletedPage: Int = 4
+    
+    private var isInputValid: Bool {
+        guard let weight = Double(currentWeight),
+              let bodyFat = Double(bodyFatPercentage) else {
+            return false
+        }
+        return weight > 0 && bodyFat >= 0 && bodyFat <= 100
+    }
+    
+    private func saveAndContinue() {
+        guard isInputValid else { return }
+        
+        guard let user = Auth.auth().currentUser else { return }
+        
+        let userData: [String: Any] = [
+            "currentWeight": Double(currentWeight) ?? 0,
+            "weightUnit": isKg ? "kg" : "lbs",
+            "bodyFatPercentage": Double(bodyFatPercentage) ?? 0,
+            "lastCompletedPage": 4
+        ]
+        
+        let db = Firestore.firestore()
+        db.collection("users").document(user.uid).setData(userData, merge: true) { error in
+            if let error = error {
+                print("Error saving user data: \(error.localizedDescription)")
+                return
+            }
+            
+            lastCompletedPage = 4
+            showNextScreen = true
+        }
+    }
     
     var body: some View {
         NavigationView {
@@ -24,23 +57,18 @@ struct UserTargetView: View {
                 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
-                        // Goal Text
-                        Text("Your goal is \(selectedGoal)")
-                            .font(.headline)
-                            .foregroundColor(.blue)
-                            .padding(.top)
-                        
-                        Text("Now let's talk about where we want to be")
+                        Text("Hmm.. Let me know where we are now")
                             .font(.title2)
                             .fontWeight(.bold)
+                            .padding(.top)
                         
-                        // Target Weight Section
+                        // Current Weight Section
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Target Weight")
+                            Text("Current Weight")
                                 .font(.headline)
                             
                             HStack {
-                                TextField("Enter target weight", text: $targetWeight)
+                                TextField("Enter weight", text: $currentWeight)
                                     .keyboardType(.decimalPad)
                                     .textFieldStyle(RoundedBorderTextFieldStyle())
                                 
@@ -53,13 +81,13 @@ struct UserTargetView: View {
                             }
                         }
                         
-                        // Target Body Fat Section
+                        // Body Fat Percentage Section
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Target Body Fat %")
+                            Text("Current Body Fat %")
                                 .font(.headline)
                             
                             HStack {
-                                TextField("Enter target body fat", text: $targetBodyFat)
+                                TextField("Enter body fat", text: $bodyFatPercentage)
                                     .keyboardType(.decimalPad)
                                     .textFieldStyle(RoundedBorderTextFieldStyle())
                                 
@@ -68,7 +96,7 @@ struct UserTargetView: View {
                             }
                             
                             Button(action: { showingBFGuide = true }) {
-                                Text("See body fat percentage reference guide")
+                                Text("Don't know your BF%? Don't worry, click to see some reference")
                                     .font(.subheadline)
                                     .foregroundColor(.blue)
                                     .multilineTextAlignment(.leading)
@@ -91,48 +119,37 @@ struct UserTargetView: View {
                 .padding(.bottom)
                 .disabled(!isInputValid)
             }
-            .navigationTitle("Profile Setup (5/6)")
+            .navigationTitle("Profile Setup (4/6)")
             .navigationBarBackButtonHidden(true)
             .sheet(isPresented: $showingBFGuide) {
-                BodyFatGuideView(userSex: userSex)
+                NavigationView {
+                    BodyFatGuideView(userSex: userSex)
+                }
             }
             .fullScreenCover(isPresented: $showNextScreen) {
-                GoalTimelineView(selectedGoal: selectedGoal, userMotivations: motivations)
+                UserTargetView(
+                    currentWeight: Double(currentWeight) ?? 0,
+                    currentBF: Double(bodyFatPercentage) ?? 0,
+                    height: height,
+                    sex: userSex,
+                    selectedGoal: selectedGoal,
+                    motivations: motivations
+                )
             }
-        }
-    }
-    
-    private var isInputValid: Bool {
-        guard let weight = Double(targetWeight),
-              let bodyFat = Double(targetBodyFat) else {
-            return false
-        }
-        return weight > 0 && bodyFat >= 0 && bodyFat <= 100
-    }
-    
-    private func saveAndContinue() {
-        guard isInputValid else { return }
-        
-        guard let user = Auth.auth().currentUser else { return }
-        
-        let userData: [String: Any] = [
-            "targetWeight": Double(targetWeight) ?? 0,
-            "targetWeightUnit": isKg ? "kg" : "lbs",
-            "targetBodyFat": Double(targetBodyFat) ?? 0,
-            "lastCompletedPage": 5
-        ]
-        
-        let db = Firestore.firestore()
-        db.collection("users").document(user.uid).setData(userData, merge: true) { error in
-            if let error = error {
-                print("Error saving user data: \(error.localizedDescription)")
-                return
-            }
-            
-            lastCompletedPage = 5
-            showNextScreen = true
         }
     }
 }
 
-// Note: We're reusing the BodyFatGuideView from UserCurrentView 
+// Preview
+struct UserCurrentView_Previews: PreviewProvider {
+    static var previews: some View {
+        NavigationView {
+            UserCurrentView(
+                selectedGoal: "Weight Loss",
+                userSex: "male",
+                motivations: ["Motivation 1", "Motivation 2"],
+                height: 0
+            )
+        }
+    }
+} 

@@ -34,7 +34,7 @@ struct FullScreenGraphView<Content: View>: View {
 
 // Extension for chart interaction
 extension View {
-    func chartInteraction(isFullScreen: Bool = false, 
+    func chartInteraction(isFullScreen: Bool = false,
                          plotted points: [Date],
                          onValueChanged: @escaping (Date, Double) -> Void) -> some View {
         self.chartOverlay { proxy in
@@ -66,4 +66,4 @@ extension View {
             }
         }
     }
-} 
+}

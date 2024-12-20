@@ -6,10 +6,12 @@ import FirebaseFirestore
 struct GoalTimelineView: View {
     let selectedGoal: String
     let userMotivations: [String]
+    let currentWeight: Double
+    let targetWeight: Double
     @State private var selectedPace: String = ""
     @State private var targetDate: Date = Date()
     @State private var showNextScreen = false
-    @State private var progress: Double = 0.858 // 6/7
+    @State private var progress: Double = 0.858
     @AppStorage("lastCompletedPage") private var lastCompletedPage: Int = 6
     @State private var showDatePicker = false
     @State private var hasSetTargetDate = false
@@ -22,159 +24,220 @@ struct GoalTimelineView: View {
         return result + (words.count > 10 ? "..." : "")
     }
     
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 24) {
-                // Progress bar
-                ProgressView(value: progress)
-                    .progressViewStyle(LinearProgressViewStyle(tint: .blue))
-                    .padding()
-                
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        Text("Let's set your goal timeline")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .padding(.top)
-                        
-                        // Goal Summary Section
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("Your motivation:")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                            
-                            Text(primaryMotivation)
-                                .font(.subheadline)
-                                .foregroundColor(.primary)
-                                .padding()
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .cornerRadius(12)
-                        }
-                        .padding(.vertical, 8)
-                        
-                        // Pace Section
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Choose your pace:")
-                                .font(.headline)
-                            
-                            VStack(spacing: 16) {
-                                TimeframeButton(
-                                    title: "Advanced (1-2 months)",
-                                    description: "750-1000gms change per week",
-                                    isSelected: selectedPace == "Advanced"
-                                ) {
-                                    selectedPace = "Advanced"
-                                }
-                                
-                                TimeframeButton(
-                                    title: "Intermediate (2-4 months)",
-                                    description: "500-750gms change per week",
-                                    isSelected: selectedPace == "Intermediate"
-                                ) {
-                                    selectedPace = "Intermediate"
-                                }
-                                
-                                TimeframeButton(
-                                    title: "Beginner (4+ months)",
-                                    description: "250-500gms change per week",
-                                    isSelected: selectedPace == "Beginner"
-                                ) {
-                                    selectedPace = "Beginner"
-                                }
-                            }
-                        }
-                        
-                        // Target Date Section
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Set a target date (optional):")
-                                .font(.headline)
-                            
-                            Button(action: { showDatePicker = true }) {
-                                HStack {
-                                    Text(hasSetTargetDate ? formatDate(targetDate) : "Select target date")
-                                        .foregroundColor(hasSetTargetDate ? .primary : .secondary)
-                                    Spacer()
-                                    Image(systemName: "calendar")
-                                        .foregroundColor(.blue)
-                                }
-                                .padding()
-                                .background(Color(.systemGray6))
-                                .cornerRadius(8)
-                            }
-                        }
-                        .padding(.top, 16)
-                    }
-                    .padding()
-                }
-                
-                // Continue Button
-                Button(action: saveAndContinue) {
-                    Text("Continue")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .background(!selectedPace.isEmpty ? Color.blue : Color.gray)
-                        .cornerRadius(12)
-                }
-                .padding(.horizontal)
-                .padding(.bottom)
-                .disabled(selectedPace.isEmpty)
-            }
-            .navigationTitle("Profile Setup (6/7)")
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationBarBackButtonHidden(true)
-            .sheet(isPresented: $showDatePicker) {
-                NavigationView {
-                    DatePicker("Select Date", selection: $targetDate, in: Date()..., displayedComponents: .date)
-                        .datePickerStyle(.graphical)
-                        .navigationBarItems(
-                            leading: Button("Cancel") {
-                                showDatePicker = false
-                            },
-                            trailing: Button("Done") {
-                                hasSetTargetDate = true
-                                showDatePicker = false
-                            }
-                        )
-                }
-            }
-            .fullScreenCover(isPresented: $showNextScreen) {
-                HealthKitView()
-            }
+    private var weeksToGoal: Int {
+        let weightDifference = abs(targetWeight - currentWeight)
+        let weeklyRate: Double
+        
+        switch selectedPace {
+        case "Beginner":
+            weeklyRate = 0.25 // 250g per week
+        case "Intermediate":
+            weeklyRate = 0.5 // 500g per week
+        case "Advanced":
+            weeklyRate = 0.75 // 750g per week
+        default:
+            weeklyRate = 0.25
         }
+        
+        return Int(ceil(weightDifference / weeklyRate))
     }
     
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
-        formatter.timeStyle = .none
+        formatter.timeStyle = .none  // Remove time from display
         return formatter.string(from: date)
     }
     
-    private func saveAndContinue() {
-        guard !selectedPace.isEmpty else { return }
-        guard let user = Auth.auth().currentUser else { return }
-        
-        var userData: [String: Any] = [
-            "goalTimeframe": selectedPace,
-            "primaryMotivation": primaryMotivation,
-            "lastCompletedPage": 6
-        ]
-        
-        // Only save target date if user has set one
-        if hasSetTargetDate {
-            userData["targetDate"] = Timestamp(date: targetDate)
+    var body: some View {
+        VStack(spacing: 24) {
+            // Progress bar (6/7)
+            ProgressView(value: progress)
+                .progressViewStyle(LinearProgressViewStyle(tint: .blue))
+                .padding()
+            
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    Text("Let's set your goal timeline")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .padding(.top)
+                    
+                    // Pace Selection
+                    VStack(spacing: 16) {
+                        PaceButton(
+                            title: "Beginner",
+                            subtitle: "250g-500g/week",
+                            isSelected: selectedPace == "Beginner"
+                        ) {
+                            selectedPace = "Beginner"
+                            updateTargetDate()
+                        }
+                        
+                        PaceButton(
+                            title: "Intermediate",
+                            subtitle: "500g-750g/week",
+                            isSelected: selectedPace == "Intermediate"
+                        ) {
+                            selectedPace = "Intermediate"
+                            updateTargetDate()
+                        }
+                        
+                        PaceButton(
+                            title: "Advanced",
+                            subtitle: "750g-1000g/week",
+                            isSelected: selectedPace == "Advanced"
+                        ) {
+                            selectedPace = "Advanced"
+                            updateTargetDate()
+                        }
+                    }
+                    
+                    if !selectedPace.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Target Date")
+                                .font(.headline)
+                            
+                            Text("With this pace you will reach your goal weight of \(String(format: "%.1f", targetWeight))kg in \(weeksToGoal) weeks")
+                                .foregroundColor(.secondary)
+                            
+                            DatePicker("Target Date", 
+                                selection: $targetDate,
+                                in: Date()...,
+                                displayedComponents: [.date]  // Only show date, no time
+                            )
+                            .datePickerStyle(.compact)
+                        }
+                        .padding(.top)
+                    }
+                }
+                .padding()
+            }
+            
+            // Continue Button
+            Button(action: saveGoal) {
+                Text("Save Goal")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(!selectedPace.isEmpty ? Color.blue : Color.gray)
+                    .cornerRadius(12)
+            }
+            .padding(.horizontal)
+            .padding(.bottom)
+            .disabled(selectedPace.isEmpty)
         }
+        .navigationTitle("Profile Setup (6/7)")
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
+        .sheet(isPresented: $showDatePicker) {
+            NavigationView {
+                DatePicker("Target Date",
+                    selection: $targetDate,
+                    in: Date()...,
+                    displayedComponents: [.date]  // Only show date, no time
+                )
+                .datePickerStyle(.graphical)
+                .navigationBarItems(
+                    leading: Button("Cancel") {
+                        showDatePicker = false
+                    },
+                    trailing: Button("Done") {
+                        hasSetTargetDate = true
+                        showDatePicker = false
+                    }
+                )
+            }
+        }
+        .fullScreenCover(isPresented: $showNextScreen) {
+            HealthKitView()
+        }
+    }
+    
+    private func updateTargetDate() {
+        let calendar = Calendar.current
+        targetDate = calendar.date(byAdding: .weekOfYear, value: weeksToGoal, to: Date()) ?? Date()
+    }
+    
+    private func saveGoal() {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
         
         let db = Firestore.firestore()
-        db.collection("users").document(user.uid).setData(userData, merge: true) { error in
+        db.collection("users").document(userId).updateData([
+            "goalTimeframe": selectedPace,
+            "targetDate": Timestamp(date: targetDate),
+            "lastCompletedPage": 6
+        ]) { error in
             if let error = error {
-                print("Error saving user data: \(error.localizedDescription)")
+                print("Error saving goal timeline: \(error)")
                 return
             }
             
             lastCompletedPage = 6
             showNextScreen = true
+        }
+    }
+}
+
+struct PaceButton: View {
+    let title: String
+    let subtitle: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
+            }
+            .padding()
+            .frame(maxWidth: .infinity)
+            .background(isSelected ? Color.blue : Color(.systemGray6))
+            .foregroundColor(isSelected ? .white : .primary)
+            .cornerRadius(10)
+        }
+    }
+}
+
+struct TimeframeButton: View {
+    let title: String
+    let description: String
+    let isSelected: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(title)
+                    .font(.headline)
+                Text(description)
+                    .font(.subheadline)
+                    .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+            .background(isSelected ? Color.blue : Color(.systemGray6))
+            .foregroundColor(isSelected ? .white : .primary)
+            .cornerRadius(12)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// Preview
+struct GoalTimelineView_Previews: PreviewProvider {
+    static var previews: some View {
+        NavigationView {
+            GoalTimelineView(
+                selectedGoal: "Weight Loss",
+                userMotivations: ["Losing weight for health"],
+                currentWeight: 80.0,
+                targetWeight: 70.0
+            )
         }
     }
 } 

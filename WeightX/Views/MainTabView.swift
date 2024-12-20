@@ -1,46 +1,49 @@
+//
+//  MainTabView.swift
+//  WeightX
+//
+//  Created by Keerthanaa Vm on 21/11/24.
+//
+
+import Foundation
+import Foundation
+import SwiftUI
+import FirebaseAuth
+import FirebaseFirestore
+
 struct MainTabView: View {
     @Binding var isUserLoggedIn: Bool
     @State private var selectedTab = 0
-    @State private var showingAddWeight = false
     
     var body: some View {
         TabView(selection: $selectedTab) {
-            NavigationView {
-                ZStack(alignment: .bottomTrailing) {
-                    HomeScreenView(isUserLoggedIn: $isUserLoggedIn)
-                    
-                    // Floating Action Button
-                    Button(action: { showingAddWeight = true }) {
-                        Image(systemName: "plus.circle.fill")
-                            .resizable()
-                            .frame(width: 50, height: 50)
-                            .foregroundColor(.blue)
-                            .background(Color.white)
-                            .clipShape(Circle())
-                            .shadow(radius: 3)
-                    }
-                    .padding(.trailing, 20)
-                    .padding(.bottom, 70)
+            HomeScreenView(isUserLoggedIn: $isUserLoggedIn)
+                .tabItem {
+                    Image(systemName: "house.fill")
+                    Text("Home")
                 }
-            }
-            .tabItem {
-                Label("Home", systemImage: "house.fill")
-            }
-            .tag(0)
+                .tag(0)
             
-            NavigationView {
-                WeightLogHistoryView()
-            }
-            .tabItem {
-                Label("History", systemImage: "list.bullet")
-            }
-            .tag(1)
-        }
-        .sheet(isPresented: $showingAddWeight) {
-            AddWeightView()
-        }
-        .onAppear {
-            UserSettings.shared.loadWeightUnitFromFirestore()
+            WeightLogHistoryView()
+                .tabItem {
+                    Image(systemName: "list.bullet")
+                    Text("Logs")
+                }
+                .tag(1)
+            
+            InsightsView()
+                .tabItem {
+                    Image(systemName: "chart.bar.fill")
+                    Text("Insights")
+                }
+                .tag(2)
+            
+            SettingsView(isShowing: .constant(false), isUserLoggedIn: $isUserLoggedIn)
+                .tabItem {
+                    Image(systemName: "gear")
+                    Text("Settings")
+                }
+                .tag(3)
         }
     }
-} 
+}

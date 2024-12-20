@@ -1,3 +1,7 @@
+import SwiftUI
+import Firebase
+import FirebaseAuth
+
 struct EditWeightView: View {
     let log: WeightLog
     let onSave: () -> Void
@@ -24,12 +28,13 @@ struct EditWeightView: View {
         self.log = log
         self.onSave = onSave
         
-        // Convert weight from kg to current unit for display
-        let displayWeight = UserSettings.shared.weightUnit.convert(log.weight, from: .kg)
-        _weight = State(initialValue: String(format: "%.1f", displayWeight))
+        // Initialize with the display weight (converted to user's preferred unit)
+        _weight = State(initialValue: String(format: "%.2f", log.displayWeight))
         _date = State(initialValue: log.date)
         _notes = State(initialValue: log.notes)
         _selectedTags = State(initialValue: Set(log.tags))
+        
+        print("EditWeightView initialized with weight: \(log.weight)kg, display weight: \(log.displayWeight) \(UserSettings.shared.weightUnit.rawValue)")
     }
     
     var body: some View {
@@ -174,29 +179,3 @@ struct EditWeightView: View {
         }
     }
 }
-
-struct TagView: View {
-    let tag: String
-    var isSelected: Bool = true
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 4) {
-                Text(tag)
-                    .font(.subheadline)
-                if isSelected {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.caption)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(isSelected ? Color.blue : Color.gray.opacity(0.2))
-            .foregroundColor(isSelected ? .white : .primary)
-            .cornerRadius(16)
-        }
-        .buttonStyle(PlainButtonStyle())
-        .padding(.trailing, 4)
-    }
-} 

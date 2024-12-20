@@ -1,5 +1,13 @@
+//
+//  UserSettings.swift
+//  WeightX
+//
+//  Created by Keerthanaa Vm on 30/11/24.
+//
+
 import SwiftUI
 import FirebaseFirestore
+import FirebaseAuth
 
 enum WeightUnit: String, Codable {
     case kg
@@ -19,32 +27,14 @@ class UserSettings {
     
     func setWeightUnit(_ unit: WeightUnit) {
         weightUnit = unit
-        saveWeightUnitToUser(unit)
+        saveWeightUnitToFirestore(unit)
     }
     
-    private func saveWeightUnitToUser(_ unit: WeightUnit) {
+    func loadWeightUnitFromFirestore() {
         guard let userId = Auth.auth().currentUser?.uid else { return }
         
         let db = Firestore.firestore()
-        let data: [String: Any] = [
-            "weightUnit": unit.rawValue,
-            "updatedAt": Timestamp()
-        ]
-        
-        db.collection("users").document(userId).setData(data, merge: true) { error in
-            if let error = error {
-                print("Error saving weight unit: \(error)")
-            } else {
-                print("Weight unit saved successfully: \(unit.rawValue)")
-            }
-        }
-    }
-    
-    func loadWeightUnitFromUser() {
-        guard let userId = Auth.auth().currentUser?.uid else { return }
-        
-        let db = Firestore.firestore()
-        db.collection("users").document(userId).getDocument { snapshot, error in
+        db.collection("weightUnits").document(userId).getDocument { snapshot, error in
             if let error = error {
                 print("Error loading weight unit: \(error)")
                 return
@@ -55,7 +45,7 @@ class UserSettings {
                let unit = WeightUnit(rawValue: unitString) {
                 DispatchQueue.main.async {
                     self.weightUnit = unit
-                    print("Weight unit loaded from user: \(unit.rawValue)")
+                    print("Weight unit loaded from Firestore: \(unit.rawValue)")
                 }
             } else {
                 // Set default unit and save it for new users
@@ -65,8 +55,27 @@ class UserSettings {
         }
     }
     
+    private func saveWeightUnitToFirestore(_ unit: WeightUnit) {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        
+        let db = Firestore.firestore()
+        let data: [String: Any] = [
+            "userId": userId,
+            "weightUnit": unit.rawValue,
+            "updatedAt": Timestamp()
+        ]
+        
+        db.collection("weightUnits").document(userId).setData(data, merge: true) { error in
+            if let error = error {
+                print("Error saving weight unit: \(error)")
+            } else {
+                print("Weight unit saved successfully: \(unit.rawValue)")
+            }
+        }
+    }
+    
     func formatWeight(_ weight: Double) -> String {
         let convertedWeight = weightUnit.convert(weight, from: .kg)
         return String(format: "%.1f %@", convertedWeight, weightUnit.rawValue)
     }
-} 
+}

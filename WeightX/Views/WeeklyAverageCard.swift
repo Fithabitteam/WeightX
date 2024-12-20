@@ -1,7 +1,17 @@
+//
+//  WeeklyAverageCard.swift
+//  WeightX
+//
+//  Created by Keerthanaa Vm on 24/11/24.
+//
+
+import Foundation
+import SwiftUI
+
+
 struct WeeklyAverageCard: View {
     let average: Double
     let difference: Double
-    let hasPreviousWeekData: Bool
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -14,7 +24,7 @@ struct WeeklyAverageCard: View {
                     .font(.title2)
                     .fontWeight(.bold)
                 
-                if difference != 0 && hasPreviousWeekData {
+                if difference != 0 {
                     Text(differenceString)
                         .font(.caption)
                         .foregroundColor(difference > 0 ? .red : .green)
@@ -40,4 +50,4 @@ struct WeeklyAverageCard: View {
             return "\(prefix)\(String(format: "%.0f g", difference * 1000))"
         }
     }
-} 
+}

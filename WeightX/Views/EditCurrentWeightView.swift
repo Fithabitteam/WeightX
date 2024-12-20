@@ -99,4 +99,4 @@ struct EditCurrentWeightView: View {
             presentationMode.wrappedValue.dismiss()
         }
     }
-} 
+}

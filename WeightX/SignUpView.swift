@@ -26,7 +26,7 @@ struct SignUpView: View {
                     .fontWeight(.bold)
                     .padding(.top, 32)
                 
-                // Phone Number Entry
+               /* // Phone Number Entry
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Phone Number")
                         .font(.headline)
@@ -88,7 +88,7 @@ struct SignUpView: View {
                         .fill(Color(.systemGray4))
                         .frame(height: 1)
                 }
-                .padding(.horizontal)
+                .padding(.horizontal)*/
                 
                 // Google Sign In Button
                 Button(action: signInWithGoogle) {

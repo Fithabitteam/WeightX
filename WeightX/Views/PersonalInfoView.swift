@@ -1,5 +1,7 @@
 import SwiftUI
-import Firebase
+import Charts
+import FirebaseFirestore
+import Foundation
 import FirebaseAuth
 
 struct PersonalInfoView: View {
@@ -121,7 +123,12 @@ struct PersonalInfoView: View {
             .navigationTitle("Profile Setup (3/7)")
             .navigationBarBackButtonHidden(true)
             .fullScreenCover(isPresented: $showNextScreen) {
-                UserCurrentView(selectedGoal: selectedGoal, userSex: selectedSex, motivations: motivations)
+                UserCurrentView(
+                    selectedGoal: selectedGoal,
+                    userSex: selectedSex,
+                    motivations: motivations,
+                    height: isHeightInCM ? Double(height) ?? 0 : ((Double(height) ?? 0) * 2.54)
+                )
             }
             .sheet(isPresented: $showDatePicker) {
                 DatePickerSheet(birthDate: $birthDate, isPresented: $showDatePicker)
@@ -170,6 +177,7 @@ struct PersonalInfoView: View {
 struct DatePickerSheet: View {
     @Binding var birthDate: Date
     @Binding var isPresented: Bool
+    @Environment(\.dismiss) var dismiss
     
     var body: some View {
         NavigationView {
@@ -181,19 +189,9 @@ struct DatePickerSheet: View {
                     .labelsHidden()
             }
             .navigationBarItems(
-                leading: Button("Cancel") {
-                    isPresented = false
-                },
-                trailing: Button("Done") {
-                    isPresented = false
-                }
+                leading: Button("Cancel") { dismiss() },
+                trailing: Button("Done") { dismiss() }
             )
         }
-    }
-}
-
-struct PersonalInfoView_Previews: PreviewProvider {
-    static var previews: some View {
-        PersonalInfoView(selectedGoal: "Lose Weight", motivations: ["Motivation 1", "Motivation 2"])
     }
 } 

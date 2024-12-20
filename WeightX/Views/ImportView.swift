@@ -4,9 +4,9 @@ import FirebaseFirestore
 import FirebaseAuth
 import CoreXLSX
 
-// First, let's define a custom UTType for xlsx files
 extension UTType {
     static var xlsx: UTType {
+        // Add more identifiers to support different Excel formats
         UTType(tag: "xlsx",
                tagClass: .filenameExtension,
                conformingTo: nil) ?? UTType(importedAs: "com.microsoft.excel.xlsx")
@@ -153,6 +153,24 @@ struct ExcelImportView: View {
         }
     }
     
+    private func parseExcelDate(_ excelDateStr: String) -> Date? {
+        // Convert Excel date string to Double
+        guard let excelDate = Double(excelDateStr) else {
+            print("Could not convert Excel date to number: \(excelDateStr)")
+            return nil
+        }
+        
+        // Excel dates are number of days since January 1, 1900
+        // First, convert to seconds (days * 24 hours * 60 minutes * 60 seconds)
+        let excelEpoch = Date(timeIntervalSince1970: -2208988800) // January 1, 1900
+        let secondsSinceExcelEpoch = excelDate * 24 * 60 * 60
+        
+        // Create date by adding seconds to Excel epoch
+        let date = excelEpoch.addingTimeInterval(secondsSinceExcelEpoch)
+        print("Converted Excel date \(excelDateStr) to \(date)")
+        return date
+    }
+
     private func parseDate(_ dateStr: String) -> Date? {
         // First try parsing as formatted date
         let formatter = DateFormatter()
@@ -170,7 +188,7 @@ struct ExcelImportView: View {
         if let excelDate = Double(dateStr) {
             // Excel dates start from January 0, 1900 and have a bug treating 1900 as leap year
             // We need to adjust for these Excel quirks
-            let adjustedExcelDate = excelDate - 2  // Subtract 2 days to account for Excel's quirks
+            let adjustedExcelDate = excelDate  // Subtract 2 days to account for Excel's quirks
             
             // Convert to Unix timestamp
             let secondsSinceUnixEpoch = (adjustedExcelDate - 25569) * 86400  // 25569 is days between 1/1/1900 and 1/1/1970
@@ -187,7 +205,7 @@ struct ExcelImportView: View {
         print("Failed to parse date: \(dateStr)")
         return nil
     }
-    
+
     private func importExcelFile(from file: URL) throws {
         guard let userId = Auth.auth().currentUser?.uid else {
             throw ImportError.notAuthenticated
@@ -214,56 +232,56 @@ struct ExcelImportView: View {
         var isFirstRow = true
         
         if let rows = worksheet.data?.rows {
-            for rowReference in rows {
-                if isFirstRow {
-                    isFirstRow = false
-                    print("Skipping header row")
-                    continue
-                }
-                
-                let rowCells = rowReference.cells
-                
-                // Get weight from first column
-                guard let weightStr = rowCells[0].value,
-                      let weight = Double(weightStr) else {
-                    print("Invalid weight format: \(rowCells[0].value ?? "nil")")
-                    errorCount += 1
-                    continue
-                }
-                
-                // Get date from second column
-                guard let dateStr = rowCells[1].value else {
-                    print("No date value found")
-                    errorCount += 1
-                    continue
-                }
-                
-                print("Processing row - Weight: \(weight), Date string: \(dateStr)")
-                guard let date = parseDate(dateStr) else {
-                    print("Failed to parse date string: \(dateStr)")
-                    errorCount += 1
-                    continue
-                }
-                
-                // Create weight entry
-                let data: [String: Any] = [
-                    "userId": userId,
-                    "weight": weight,
-                    "date": Timestamp(date: date),
-                    "createdAt": Timestamp()
-                ]
-                
-                // Add to Firestore
-                do {
-                    try db.collection("weights").addDocument(data: data)
-                    importCount += 1
-                    print("Successfully imported: Weight=\(weight), Date=\(date)")
-                } catch {
-                    print("Error adding entry: \(error.localizedDescription)")
-                    errorCount += 1
+                for rowReference in rows {
+                    if isFirstRow {
+                        isFirstRow = false
+                        print("Skipping header row")
+                        continue
+                    }
+                    
+                    let rowCells = rowReference.cells
+                    
+                    // Get weight from first column
+                    guard let weightStr = rowCells[0].value,
+                          let weight = Double(weightStr) else {
+                        print("Invalid weight format: \(rowCells[0].value ?? "nil")")
+                        errorCount += 1
+                        continue
+                    }
+                    
+                    // Get date from second column
+                    guard let dateStr = rowCells[1].value else {
+                        print("No date value found")
+                        errorCount += 1
+                        continue
+                    }
+                    
+                    print("Processing row - Weight: \(weight), Date string: \(dateStr)")
+                    guard let date = parseDate(dateStr) else {
+                        print("Failed to parse date string: \(dateStr)")
+                        errorCount += 1
+                        continue
+                    }
+                    
+                    // Create weight entry
+                    let data: [String: Any] = [
+                        "userId": userId,
+                        "weight": weight,
+                        "date": Timestamp(date: date),
+                        "createdAt": Timestamp()
+                    ]
+                    
+                    // Add to Firestore
+                    do {
+                        try db.collection("weights").addDocument(data: data)
+                        importCount += 1
+                        print("Successfully imported: Weight=\(weight), Date=\(date)")
+                    } catch {
+                        print("Error adding entry: \(error.localizedDescription)")
+                        errorCount += 1
+                    }
                 }
             }
-        }
         
         print("Import completed - Successful: \(importCount), Errors: \(errorCount)")
         
@@ -279,24 +297,24 @@ struct ExcelImportView: View {
             }
         }
     }
-}
-
-enum ImportError: LocalizedError {
-    case accessDenied
-    case notAuthenticated
-    case noWorksheet
-    case invalidFormat
     
-    var errorDescription: String? {
-        switch self {
-        case .accessDenied:
-            return "Cannot access the selected file"
-        case .notAuthenticated:
-            return "Please sign in to import data"
-        case .noWorksheet:
-            return "Invalid Excel file format"
-        case .invalidFormat:
-            return "Invalid data format in Excel file"
+    enum ImportError: LocalizedError {
+        case accessDenied
+        case notAuthenticated
+        case noWorksheet
+        case invalidFormat
+        
+        var errorDescription: String? {
+            switch self {
+            case .accessDenied:
+                return "Cannot access the selected file"
+            case .notAuthenticated:
+                return "Please sign in to import data"
+            case .noWorksheet:
+                return "Invalid Excel file format"
+            case .invalidFormat:
+                return "Invalid data format in Excel file"
+            }
         }
     }
-} 
+}

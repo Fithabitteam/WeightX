@@ -1,3 +1,9 @@
+/*import Foundation
+import SwiftUI
+import Firebase
+import FirebaseAuth
+import FirebaseFirestore
+
 struct TargetBodyFatView: View {
     @Binding var currentStep: OnboardingStep
     @AppStorage("targetBodyFat") private var targetBodyFat: Double = 0.0
@@ -59,3 +65,4 @@ struct TargetBodyFatView: View {
         currentStep = .completed
     }
 } 
+*/

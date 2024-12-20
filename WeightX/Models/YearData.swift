@@ -1,3 +1,8 @@
+import SwiftUI
+import Charts
+import FirebaseFirestore
+import FirebaseAuth
+
 struct YearData {
     struct WeekData {
         let weekNumber: Int

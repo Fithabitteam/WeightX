@@ -1,11 +1,14 @@
-import SwiftUI
-import FirebaseFirestore
-import FirebaseAuth
-
 struct EditGoalView: View {
     let currentGoal: String
     @State private var selectedGoal: String
     @Environment(\.presentationMode) var presentationMode
+    
+    // Add these constants
+    private enum Goal {
+        static let lose = "Lose"
+        static let gain = "Gain"
+        static let maintain = "Maintain"
+    }
     
     init(currentGoal: String) {
         self.currentGoal = currentGoal
@@ -15,33 +18,33 @@ struct EditGoalView: View {
     var body: some View {
         Form {
             Section {
-                Button(action: { selectedGoal = "Weight Loss" }) {
+                Button(action: { selectedGoal = Goal.lose }) {
                     HStack {
                         Text("Weight Loss")
                         Spacer()
-                        if selectedGoal == "Weight Loss" {
+                        if selectedGoal == Goal.lose {
                             Image(systemName: "checkmark")
                                 .foregroundColor(.blue)
                         }
                     }
                 }
                 
-                Button(action: { selectedGoal = "Weight Gain" }) {
+                Button(action: { selectedGoal = Goal.gain }) {
                     HStack {
                         Text("Weight Gain")
                         Spacer()
-                        if selectedGoal == "Weight Gain" {
+                        if selectedGoal == Goal.gain {
                             Image(systemName: "checkmark")
                                 .foregroundColor(.blue)
                         }
                     }
                 }
                 
-                Button(action: { selectedGoal = "Maintain Weight" }) {
+                Button(action: { selectedGoal = Goal.maintain }) {
                     HStack {
                         Text("Maintain Weight")
                         Spacer()
-                        if selectedGoal == "Maintain Weight" {
+                        if selectedGoal == Goal.maintain {
                             Image(systemName: "checkmark")
                                 .foregroundColor(.blue)
                         }
@@ -60,7 +63,7 @@ struct EditGoalView: View {
         
         let db = Firestore.firestore()
         db.collection("users").document(userId).updateData([
-            "weightGoal": selectedGoal
+            "selectedGoal": selectedGoal  // Changed from "weightGoal" to "selectedGoal"
         ]) { error in
             if let error = error {
                 print("Error updating goal: \(error)")

@@ -1,3 +1,16 @@
+//
+//  AddWeightView.swift
+//  WeightX
+//
+//  Created by Keerthanaa Vm on 20/11/24.
+//
+
+import Foundation
+import SwiftUI
+import Firebase
+import FirebaseFirestore
+import FirebaseAuth
+
 struct AddWeightView: View {
     @Environment(\.presentationMode) var presentationMode
     @State private var weight: String = ""
@@ -10,9 +23,14 @@ struct AddWeightView: View {
     @State private var showingUnitInfo = false
     @State private var showingSettings = false
     @FocusState private var isWeightFieldFocused: Bool
+    @State private var existingEntry: WeightEntry?
+    @State private var isLoadingEntry = false
+    private let initialDate: Date?
     
-    init(preselectedDate: Date? = nil) {
+    init(preselectedDate: Date? = nil, initialWeight: String = "") {
+        self.initialDate = preselectedDate
         _date = State(initialValue: preselectedDate ?? Date())
+        _weight = State(initialValue: initialWeight)
     }
     
     let availableTags = [
@@ -30,6 +48,15 @@ struct AddWeightView: View {
                     HStack {
                         TextField("Weight", text: $weight)
                             .keyboardType(.decimalPad)
+                            .onChange(of: weight) { newValue in
+                                // Only allow up to 2 decimal places
+                                if let dotIndex = newValue.firstIndex(of: ".") {
+                                    let decimals = newValue[newValue.index(after: dotIndex)...]
+                                    if decimals.count > 2 {
+                                        weight = String(newValue[..<newValue.index(dotIndex, offsetBy: 3)])
+                                    }
+                                }
+                            }
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                             .frame(height: 56)
                             .focused($isWeightFieldFocused)
@@ -44,6 +71,11 @@ struct AddWeightView: View {
                     }
                     
                     DatePicker("Date", selection: $date)
+                        .onChange(of: date) { newDate in
+                            Task {
+                                await fetchExistingEntry(for: newDate)
+                            }
+                        }
                 }
                 
                 Section(header: Text("Tags")) {
@@ -119,38 +151,59 @@ struct AddWeightView: View {
                 )
             }
         }
+        .onAppear {
+            if let date = initialDate {
+                Task {
+                    await fetchExistingEntry(for: date)
+                }
+            }
+        }
     }
     
     private func saveWeightEntry() {
-        guard let weightValue = Double(weight) else {
-            errorMessage = "Please enter a valid weight"
-            showError = true
-            return
+        Task {
+            do {
+                try await saveWeight()
+                presentationMode.wrappedValue.dismiss()
+            } catch {
+                print("Error saving weight: \(error)")
+                errorMessage = "Error saving weight. Please try again."
+                showError = true
+            }
+        }
+    }
+    
+    private func saveWeight() async throws {
+        guard let userId = Auth.auth().currentUser?.uid,
+              let weightValue = Double(weight) else {
+            throw NSError(domain: "", code: -1, 
+                userInfo: [NSLocalizedDescriptionKey: "Invalid weight value"])
         }
         
-        // Convert to kg for storage if needed
-        let weightInKg = UserSettings.shared.weightUnit == .kg ? weightValue : WeightUnit.kg.convert(weightValue, from: .lbs)
+        let weightInKg = UserSettings.shared.weightUnit == .kg ? 
+            weightValue : 
+            weightValue * 0.45359237
         
-        guard let userId = Auth.auth().currentUser?.uid else { return }
-        
-        let db = Firestore.firestore()
         let data: [String: Any] = [
             "userId": userId,
-            "weight": weightInKg,  // Always store in kg
-            "date": Timestamp(date: date),
-            "notes": notes,
+            "weight": weightInKg,
+            "weightUnit": UserSettings.shared.weightUnit.rawValue,
+            "date": date,
             "tags": Array(selectedTags),
-            "createdAt": Timestamp()
+            "notes": notes,
+            "createdAt": existingEntry?.createdAt ?? Date(),
+            "updatedAt": Date()
         ]
         
-        db.collection("weights").addDocument(data: data) { error in
-            if let error = error {
-                errorMessage = "Failed to save: \(error.localizedDescription)"
-                showError = true
-                return
-            }
-            
-            presentationMode.wrappedValue.dismiss()
+        let db = Firestore.firestore()
+        if let existingEntry = existingEntry {
+            try await db.collection("weights").document(existingEntry.id).updateData(data)
+        } else {
+            try await db.collection("weights").addDocument(data: data)
+        }
+        
+        if HealthKitManager.shared.isHealthKitAvailable {
+            try await HealthKitManager.shared.saveWeight(weightInKg, date: date)
         }
     }
     
@@ -167,4 +220,70 @@ struct AddWeightView: View {
             selectedTags.insert(tag)
         }
     }
-} 
+    
+    private func fetchExistingEntry(for date: Date) async {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        isLoadingEntry = true
+        
+        let calendar = Calendar.current
+        let dayStart = calendar.startOfDay(for: date)
+        let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart)!
+        
+        let db = Firestore.firestore()
+        do {
+            let snapshot = try await db.collection("weights")
+                .whereField("userId", isEqualTo: userId)
+                .whereField("date", isGreaterThanOrEqualTo: dayStart)
+                .whereField("date", isLessThan: dayEnd)
+                .getDocuments()
+            
+            if let doc = snapshot.documents.first,
+               let entry = WeightEntry(from: doc) {
+                DispatchQueue.main.async {
+                    self.existingEntry = entry
+                    self.weight = String(format: "%.2f", 
+                        UserSettings.shared.weightUnit.convert(entry.weight, from: .kg))
+                    self.selectedTags = Set(entry.tags)
+                    self.notes = entry.notes
+                }
+            }
+        } catch {
+            print("Error fetching weight: \(error)")
+        }
+        isLoadingEntry = false
+    }
+}
+
+// Helper Views
+struct TagView: View {
+    let tag: String
+    var isSelected: Bool = true
+    var action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Text(tag)
+                    .font(.subheadline)
+                if isSelected {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.caption)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(isSelected ? Color.blue : Color.gray.opacity(0.2))
+            .foregroundColor(isSelected ? .white : .primary)
+            .cornerRadius(16)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .padding(.trailing, 4)
+    }
+}
+
+struct AddWeightView_Previews: PreviewProvider {
+    static var previews: some View {
+        AddWeightView()
+    }
+}
+

@@ -1,3 +1,8 @@
+import SwiftUI
+import Charts
+import FirebaseFirestore
+import Foundation
+
 struct MonthPickerView: View {
     @Binding var selectedDate: Date
     @Environment(\.presentationMode) var presentationMode

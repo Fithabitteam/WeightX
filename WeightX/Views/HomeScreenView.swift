@@ -13,349 +13,242 @@ import FirebaseFirestore
 struct HomeScreenView: View {
     @AppStorage("userName") private var username: String = ""
     @State private var currentWeek: Week = Week.getCurrentWeek()
-    @State private var showingSettings = false
+    @State private var showingAddWeight = false
     @Binding var isUserLoggedIn: Bool
     @State private var weeklyWeights: [Date: WeightEntry] = [:]
     @State private var weeklyAverage: Double = 0.0
     @State private var previousWeekAverage: Double = 0.0
     @State private var hasPreviousWeekData: Bool = false
     @AppStorage("weightUnit") private var weightUnit: WeightUnit = .kg
-    @State private var showWeeklyAverage = false
-    @State private var selectedMonth: Date = Date()
-    @State private var monthData: MonthData?
-    @State private var isLoadingData = false
-    @State private var showingYearPerformance = false
+    @StateObject private var goalViewModel = GoalViewModel()
+    @State private var showingWeeklyAverageInfo = false
+    @State private var showingHelpInfo = false
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                WeekSelectorView(
-                    currentWeek: $currentWeek,
-                    onWeekChange: fetchWeekData
-                )
-                .padding(.horizontal)
-                .padding(.top, 8)
-                
-                // Stats Cards
-                HStack(spacing: 16) {
-                    // Weekly Average Card
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Weekly Average")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+        NavigationView {
+            ZStack(alignment: .top) {
+                ScrollView {
+                    VStack(spacing: 16) {
+                        WeekSelectorView(
+                            currentWeek: $currentWeek,
+                            onWeekChange: fetchWeekData
+                        )
+                        .padding(.horizontal)
+                        .padding(.top, 8)
                         
-                        if weeklyAverage > 0 {
-                            Text(String(format: "%.2f %@", 
-                                 UserSettings.shared.weightUnit.convert(weeklyAverage, from: .kg),
-                                 UserSettings.shared.weightUnit.rawValue))
-                                .font(.title2)
-                                .fontWeight(.bold)
-                            
-                            if hasPreviousWeekData {
-                                let difference = weeklyAverage - previousWeekAverage
-                                Text(String(format: "%+.2f %@",
-                                     UserSettings.shared.weightUnit.convert(difference, from: .kg),
-                                     UserSettings.shared.weightUnit.rawValue))
-                                    .font(.caption)
-                                    .foregroundColor(difference >= 0 ? .red : .green)
+                        HStack {
+                            Spacer()
+                            Button(action: { showingWeeklyAverageInfo = true }) {
+                                Image(systemName: "info.circle")
+                                    .foregroundColor(.secondary)
                             }
-                        } else {
-                            Text("-")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(.secondary)
+                            .sheet(isPresented: $showingWeeklyAverageInfo) {
+                                WeeklyAverageInfoPopup(onDismiss: { showingWeeklyAverageInfo = false })
+                                    .presentationDetents([.height(300)])
+                            }
                         }
+                        .padding(.horizontal)
+                        
+                        // Stats Cards
+                        HStack(spacing: 12) {
+                            // Weekly Average Card (moved to left)
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Weekly Average")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                
+                                if weeklyAverage > 0 {
+                                    Text(String(format: "%.2f %@",
+                                         UserSettings.shared.weightUnit.convert(weeklyAverage, from: .kg),
+                                         UserSettings.shared.weightUnit.rawValue))
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                } else {
+                                    Text("-")
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                if let goalWeight = goalViewModel.goalWeight {
+                                    Text(String(format: "Goal: %.1f %@",
+                                         UserSettings.shared.weightUnit.convert(goalWeight, from: .kg),
+                                         UserSettings.shared.weightUnit.rawValue))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                            }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 125)
+                            .padding(.vertical, 16)
+                            .padding(.horizontal)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+                            
+                            // Week Comparison Box (moved to right)
+                            VStack(spacing: 12) {
+                                VStack(spacing: 0) {  // Nested VStack for better title control
+                                    Text("Last Week Avg vs")  // First line
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text("This Week Avg")     // Second line
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                .multilineTextAlignment(.center)
+                                
+                                if hasPreviousWeekData {
+                                    let difference = weeklyAverage - previousWeekAverage
+                                    Text(String(format: "%+.3f %@",
+                                         UserSettings.shared.weightUnit.convert(difference, from: .kg),
+                                         UserSettings.shared.weightUnit.rawValue))
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(goalViewModel.getDifferenceColor(for: difference))
+                                } else {
+                                    Text("-")
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                if let pace = goalViewModel.goalPace {
+                                    Text("Goal Pace:")
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                    Text(pace)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                            }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 125)
+                            .padding(.vertical, 16)
+                            .padding(.horizontal)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+                        }
+                        .padding(.horizontal)
+                        
+                        WeeklyWeightGrid(
+                            week: currentWeek,
+                            weights: weeklyWeights
+                        )
+                        .padding()
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
                 }
                 
-                Button(action: {
-                    showingYearPerformance = true
-                }) {
+                // Floating Action Button
+                VStack {
+                    Spacer()
                     HStack {
-                        Image(systemName: "chart.xyaxis.line")
-                        Text("Check Year Performance")
+                        Spacer()
+                        Button(action: { showingAddWeight = true }) {
+                            Image(systemName: "plus.circle.fill")
+                                .resizable()
+                                .frame(width: 55, height: 55)
+                                .foregroundColor(.blue)
+                                .background(Color.white)
+                                .clipShape(Circle())
+                                .shadow(radius: 3)
+                        }
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 20)
                     }
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(12)
-                }
-                .padding(.horizontal)
-                .padding(.bottom)
-            }
-                   .padding(.horizontal)
-                   
-                   WeeklyWeightGrid(
-                       week: currentWeek,
-                       weights: weeklyWeights
-                   )
-                   .padding()
-                   
-                   // Month Graphs Section
-                   VStack(spacing: 16) {
-                       MonthSelectorView(selectedDate: $selectedMonth)
-                           .padding(.horizontal)
-                       
-                       // Graph Type Toggle
-                       Picker("Graph Type", selection: $showWeeklyAverage) {
-                           Text("Daily").tag(false)
-                           Text("Weekly Avg").tag(true)
-                       }
-                       .pickerStyle(SegmentedPickerStyle())
-                       .padding(.horizontal)
-                       
-                       if isLoadingData {
-                           ProgressView("Loading data...")
-                               .padding()
-                       } else if let monthData = monthData {
-                           WeightTrendGraphView(
-                               monthData: monthData,
-                               showWeeklyAverage: showWeeklyAverage
-                           )
-                           .padding(.horizontal)
-                           
-                           WeightDifferenceGraphView(monthData: monthData)
-                               .padding(.horizontal)
-                       } else {
-                           Text("No data available")
-                               .padding()
-                       }
-                   }
-               }
-           .navigationTitle("Weight Log")
-           .toolbar {
-               ToolbarItem(placement: .navigationBarLeading) {
-                   Button(action: { showingSettings = true }) {
-                       Image(systemName: "gear")
-                           .font(.title2)
-                   }
-               }
-           }
-           .fullScreenCover(isPresented: $showingSettings) {
-               SettingsView(isShowing: $showingSettings, isUserLoggedIn: $isUserLoggedIn)
-           }
-           .fullScreenCover(isPresented: $showingYearPerformance) {
-               YearPerformanceView()
-           }
-           .onAppear {
-               fetchWeekData()
-               fetchMonthData()
-           }
-           .onChange(of: selectedMonth) { _ in
-               fetchMonthData()
-           }
-       }
-       
-    private func fetchMonthData() {
-        guard let userId = Auth.auth().currentUser?.uid else {
-            print("No user ID available")
-            return
-        }
-        
-        isLoadingData = true
-        monthData = nil  // Clear existing data
-        
-        let calendar = Calendar.current
-        let currentMonth = selectedMonth
-        
-        // Get previous month
-        guard let previousMonth = calendar.date(byAdding: .month, value: -1, to: currentMonth) else {
-            print("Failed to calculate previous month")
-            isLoadingData = false
-            return
-        }
-        
-        let db = Firestore.firestore()
-        
-        // Fetch both current and previous month data
-        let currentMonthStart = calendar.startOfMonth(for: currentMonth)
-        let currentMonthEnd = calendar.endOfMonth(for: currentMonth)
-        let previousMonthStart = calendar.startOfMonth(for: previousMonth)
-        let previousMonthEnd = calendar.endOfMonth(for: previousMonth)
-        
-        print("Starting data fetch for month: \(currentMonthStart)")
-        print("Current month range: \(currentMonthStart) to \(currentMonthEnd)")
-        print("Previous month range: \(previousMonthStart) to \(previousMonthEnd)")
-        
-        // Use DispatchGroup to handle both fetches
-        let group = DispatchGroup()
-        var currentWeights: [WeightEntry] = []
-        var previousWeights: [WeightEntry] = []
-        var fetchError: Error?
-        
-        // Fetch current month data
-        group.enter()
-        db.collection("weights")
-            .whereField("userId", isEqualTo: userId)
-            .whereField("date", isGreaterThanOrEqualTo: Timestamp(date: currentMonthStart))
-            .whereField("date", isLessThanOrEqualTo: Timestamp(date: currentMonthEnd))
-            .getDocuments { snapshot, error in
-                defer { group.leave() }
-                
-                if let error = error {
-                    print("Error fetching current month data: \(error)")
-                    fetchError = error
-                    return
                 }
                 
-                currentWeights = snapshot?.documents.compactMap { WeightEntry(from: $0) } ?? []
-                print("Found \(currentWeights.count) weights for current month")
-            }
-        
-        // Fetch previous month data
-        group.enter()
-        db.collection("weights")
-            .whereField("userId", isEqualTo: userId)
-            .whereField("date", isGreaterThanOrEqualTo: Timestamp(date: previousMonthStart))
-            .whereField("date", isLessThanOrEqualTo: Timestamp(date: previousMonthEnd))
-            .getDocuments { snapshot, error in
-                defer { group.leave() }
-                
-                if let error = error {
-                    print("Error fetching previous month data: \(error)")
-                    fetchError = error
-                    return
-                }
-                
-                previousWeights = snapshot?.documents.compactMap { WeightEntry(from: $0) } ?? []
-                print("Found \(previousWeights.count) weights for previous month")
-            }
-        
-        // Handle completion
-        group.notify(queue: .main) {
-            if let error = fetchError {
-                print("Error occurred during fetch: \(error)")
-                self.isLoadingData = false
-                return
-            }
-            
-            print("Creating MonthData with \(currentWeights.count) current weights and \(previousWeights.count) previous weights")
-            
-            let newMonthData = MonthData(
-                month: currentMonth,
-                weights: currentWeights,
-                previousMonthWeights: previousWeights
-            )
-            
-            print("MonthData created with:")
-            print("- \(newMonthData.dailyWeights.count) daily weights")
-            print("- \(newMonthData.weeklyData.count) weekly data points")
-            print("- \(newMonthData.weeklyDifferences.count) weekly differences")
-            
-            self.monthData = newMonthData
-            self.isLoadingData = false
-        }
-    }
-            
-    private func updateMonthData() {
-        guard let userId = Auth.auth().currentUser?.uid else { return }
-        
-        let calendar = Calendar.current
-        let currentMonth = selectedMonth
-        
-        // Get previous month
-        guard let previousMonth = calendar.date(byAdding: .month, value: -1, to: currentMonth) else { return }
-        
-        let db = Firestore.firestore()
-        
-        // Fetch both current and previous month data
-        let currentMonthStart = calendar.startOfMonth(for: currentMonth)
-        let currentMonthEnd = calendar.endOfMonth(for: currentMonth)
-        let previousMonthStart = calendar.startOfMonth(for: previousMonth)
-        let previousMonthEnd = calendar.endOfMonth(for: previousMonth)
-        
-        // Fetch current month data
-        let currentMonthQuery = db.collection("weights")
-            .whereField("userId", isEqualTo: userId)
-            .whereField("date", isGreaterThanOrEqualTo: Timestamp(date: currentMonthStart))
-            .whereField("date", isLessThanOrEqualTo: Timestamp(date: currentMonthEnd))
-        
-        // Fetch previous month data
-        let previousMonthQuery = db.collection("weights")
-            .whereField("userId", isEqualTo: userId)
-            .whereField("date", isGreaterThanOrEqualTo: Timestamp(date: previousMonthStart))
-            .whereField("date", isLessThanOrEqualTo: Timestamp(date: previousMonthEnd))
-        
-        // Execute both queries
-        Task {
-            do {
-                async let currentMonthDocs = currentMonthQuery.getDocuments()
-                async let previousMonthDocs = previousMonthQuery.getDocuments()
-                
-                let (currentSnapshot, previousSnapshot) = try await (currentMonthDocs, previousMonthDocs)
-                
-                let currentWeights = currentSnapshot.documents.compactMap { WeightEntry(from: $0) }
-                let previousWeights = previousSnapshot.documents.compactMap { WeightEntry(from: $0) }
-                
-                DispatchQueue.main.async {
-                    self.monthData = MonthData(
-                        month: currentMonth,
-                        weights: currentWeights,
-                        previousMonthWeights: previousWeights
+                // Info Popup Overlay
+                if goalViewModel.showingInfoPopup {
+                    GoalInfoPopup(
+                        goal: goalViewModel.userGoal ?? "",
+                        onDismiss: { goalViewModel.showingInfoPopup = false }
                     )
+                    .padding()
+                    .transition(.scale.combined(with: .opacity))
+                    .zIndex(1)
                 }
-            } catch {
-                print("Error fetching data: \(error)")
             }
-        }
-    }
-    
-    private func formatDifference(_ difference: Double) -> String {
-        let convertedDifference = UserSettings.shared.weightUnit.convert(difference, from: .kg)
-        let prefix = difference >= 0 ? "+" : ""
-        if abs(convertedDifference) >= 1 {
-            return "\(prefix)\(String(format: "%.1f %@", convertedDifference, UserSettings.shared.weightUnit.rawValue))"
-        } else {
-            return "\(prefix)\(String(format: "%.0f g", convertedDifference * 1000))"
+            .navigationTitle("WeightX")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { showingHelpInfo = true }) {
+                        Text("Help")
+                            .foregroundColor(.blue)
+                            .padding(.top, 12)
+                    }
+                }
+            }
+            .sheet(isPresented: $showingAddWeight) {
+                let currentDate = Date()
+                let calendar = Calendar.current
+                let todayStart = calendar.startOfDay(for: currentDate)
+                
+                if let existingEntry = weeklyWeights[todayStart] {
+                    let exactWeight = String(format: "%.2f", 
+                        UserSettings.shared.weightUnit.convert(existingEntry.weight, from: .kg))
+                    AddWeightView(preselectedDate: currentDate, initialWeight: exactWeight)
+                } else {
+                    AddWeightView(preselectedDate: currentDate)
+                }
+            }
+            .sheet(isPresented: $showingWeeklyAverageInfo) {
+                WeeklyAverageInfoPopup(onDismiss: { showingWeeklyAverageInfo = false })
+            }
+            .sheet(isPresented: $showingHelpInfo) {
+                HelpInfoPopup(onDismiss: { showingHelpInfo = false })
+            }
+            .onAppear {
+                fetchWeekData()
+                goalViewModel.fetchUserData()
+            }
+            .animation(.easeInOut, value: goalViewModel.showingInfoPopup)
         }
     }
     
     private func fetchWeekData() {
-           guard let userId = Auth.auth().currentUser?.uid else { return }
-           
-           let db = Firestore.firestore()
-           let calendar = Calendar.current
-           let weekStart = calendar.startOfDay(for: currentWeek.startDate)
-           let weekEnd = calendar.date(byAdding: .day, value: 1, to: currentWeek.endDate)!
-           
-           // Use snapshot listener for real-time updates
-           db.collection("weights")
-               .whereField("userId", isEqualTo: userId)
-               .whereField("date", isGreaterThanOrEqualTo: Timestamp(date: weekStart))
-               .whereField("date", isLessThan: Timestamp(date: weekEnd))
-               .addSnapshotListener { snapshot, error in
-                   if let error = error {
-                       print("Error fetching weights: \(error)")
-                       return
-                   }
-                   
-                   weeklyWeights.removeAll()
-                   
-                   snapshot?.documents.forEach { doc in
-                       if let entry = WeightEntry(from: doc) {
-                           let entryDate = calendar.startOfDay(for: entry.date)
-                           weeklyWeights[entryDate] = entry
-                       }
-                   }
-                   
-                   // Calculate average if we have weights
-                   let weights = Array(weeklyWeights.values)
-                   if !weights.isEmpty {
-                       weeklyAverage = weights.reduce(0) { $0 + $1.weight } / Double(weights.count)
-                       fetchPreviousWeekAverage(userId: userId)
-                   } else {
-                       weeklyAverage = 0
-                       previousWeekAverage = 0
-                       hasPreviousWeekData = false
-                   }
-               }
-       }
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        
+        let db = Firestore.firestore()
+        let calendar = Calendar.current
+        let weekStart = calendar.startOfDay(for: currentWeek.startDate)
+        let weekEnd = calendar.date(byAdding: .day, value: 1, to: currentWeek.endDate)!
+        
+        // Use snapshot listener for real-time updates
+        db.collection("weights")
+            .whereField("userId", isEqualTo: userId)
+            .whereField("date", isGreaterThanOrEqualTo: Timestamp(date: weekStart))
+            .whereField("date", isLessThan: Timestamp(date: weekEnd))
+            .addSnapshotListener { snapshot, error in
+                if let error = error {
+                    print("Error fetching weights: \(error)")
+                    return
+                }
+                
+                weeklyWeights.removeAll()
+                
+                snapshot?.documents.forEach { doc in
+                    if let entry = WeightEntry(from: doc) {
+                        let entryDate = calendar.startOfDay(for: entry.date)
+                        weeklyWeights[entryDate] = entry
+                    }
+                }
+                
+                // Calculate average if we have weights
+                let weights = Array(weeklyWeights.values)
+                if !weights.isEmpty {
+                    weeklyAverage = weights.reduce(0) { $0 + $1.weight } / Double(weights.count)
+                    fetchPreviousWeekAverage(userId: userId)
+                } else {
+                    weeklyAverage = 0
+                    previousWeekAverage = 0
+                    hasPreviousWeekData = false
+                }
+            }
+    }
     
     private func fetchPreviousWeekAverage(userId: String) {
         let previousWeek = currentWeek.previous()
@@ -388,46 +281,6 @@ struct HomeScreenView: View {
             }
     }
 }
-
-struct WeekSelectorView: View {
-    @Binding var currentWeek: Week
-    let onWeekChange: () -> Void
-    
-    var body: some View {
-        HStack {
-            Button(action: {
-                currentWeek = currentWeek.previous()
-                onWeekChange()
-            }) {
-                Image(systemName: "chevron.left")
-                    .font(.title3)
-                    .foregroundColor(.blue)
-            }
-            
-            Spacer()
-            
-            Text(currentWeek.dateString)
-                .font(.headline)
-            
-            Spacer()
-            
-            Button(action: {
-                if currentWeek.startDate < Week.getCurrentWeek().startDate {
-                    currentWeek = currentWeek.next()
-                    onWeekChange()
-                }
-            }) {
-                Image(systemName: "chevron.right")
-                    .font(.title3)
-                    .foregroundColor(currentWeek.startDate < Week.getCurrentWeek().startDate ? .blue : .gray)
-            }
-        }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(12)
-    }
-}
-
 
 struct StatCard: View {
     let selectedDate: Date
@@ -624,16 +477,162 @@ struct HomeScreenView_Previews: PreviewProvider {
         HomeScreenView(isUserLoggedIn: .constant(true))
     }
 }
-extension Calendar {
-    func startOfMonth(for date: Date) -> Date {
-        let components = self.dateComponents([.year, .month], from: date)
-        return self.date(from: components) ?? date
+
+class GoalViewModel: ObservableObject {
+    @Published var goalWeight: Double?
+    @Published var userGoal: String?
+    @Published var goalPace: String?
+    @Published var showingInfoPopup = false
+    
+    func fetchUserData() {
+        guard let userId = Auth.auth().currentUser?.uid else { return }
+        
+        let db = Firestore.firestore()
+        db.collection("users").document(userId).getDocument { [weak self] snapshot, error in
+            guard let data = snapshot?.data() else { return }
+            
+            DispatchQueue.main.async {
+                self?.goalWeight = data["targetWeight"] as? Double
+                self?.userGoal = data["weightGoal"] as? String
+                if let pace = data["goalTimeframe"] as? String {
+                    self?.goalPace = self?.formatPace(pace)
+                }
+            }
+        }
     }
     
-    func endOfMonth(for date: Date) -> Date {
-        guard let nextMonth = self.date(byAdding: DateComponents(month: 1), to: self.startOfMonth(for: date)) else {
-            return date
+    func getDifferenceColor(for difference: Double) -> Color {
+        guard let goal = userGoal else { return .secondary }
+        
+        switch goal {
+        case "Weight Gain":
+            return difference > 0 ? .green : .red
+        case "Weight Loss":
+            return difference < 0 ? .green : .red
+        case "Maintain Weight":
+            return abs(difference) <= 0.2 ? .green : .red
+        default:
+            return difference > 0 ? .red : .green
         }
-        return self.date(byAdding: DateComponents(second: -1), to: nextMonth) ?? date
+    }
+    
+    private func formatPace(_ pace: String) -> String {
+        switch pace {
+        case "Advanced":
+            return "750-1000g/week"
+        case "Intermediate":
+            return "500-750g/week"
+        case "Beginner":
+            return "250-500g/week"
+        default:
+            return pace
+        }
     }
 }
+
+struct GoalInfoPopup: View {
+    let goal: String
+    let onDismiss: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Text("Weight Change Indication")
+                    .font(.headline)
+                Spacer()
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.gray)
+                }
+            }
+            
+            Text(explanationText)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.leading)
+            
+            Button("Got it") {
+                onDismiss()
+            }
+            .padding(.vertical, 8)
+        }
+        .padding()
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(radius: 5)
+        .frame(maxWidth: 250)
+    }
+    
+    private var explanationText: String {
+        switch goal {
+        case "Weight Gain":
+            return "Your goal is to gain weight, so weight increases (positive changes) are shown in green and decreases (negative changes) are shown in red."
+        case "Weight Loss":
+            return "Your goal is to lose weight, so weight decreases (negative changes) are shown in green and increases (positive changes) are shown in red."
+        case "Maintain Weight":
+            return "Your goal is to maintain weight, so weight increases are shown in red and decreases are shown in green to help you stay within your target range."
+        default:
+            return "Weight increases are shown in red and decreases are shown in green."
+        }
+    }
+}
+
+struct WeeklyAverageInfoPopup: View {
+    let onDismiss: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Why do we take weekly averages?")
+                .font(.headline)
+                .padding(.top)
+            
+            Text("Weekly weight averages provide a more accurate representation of your body weight trends by smoothing out daily fluctuations caused by factors like water retention, food intake, and other variables. This helps you focus on the overall trend rather than daily variations.")
+                .font(.body)
+                .multilineTextAlignment(.center)
+                .foregroundColor(.secondary)
+                .padding(.horizontal)
+            
+            Button("Got it!") {
+                onDismiss()
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 16)
+            .background(Color.blue)
+            .foregroundColor(.white)
+            .cornerRadius(8)
+            .padding(.bottom)
+        }
+        .padding()
+    }
+}
+
+struct HelpInfoPopup: View {
+    let onDismiss: () -> Void
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Need some assistance?")
+                .font(.headline)
+                .padding(.top)
+            
+            Text("Send us a email at weightx.app@gmail.com and we would be happy to assist you")
+                .font(.body)
+                .multilineTextAlignment(.center)
+                .foregroundColor(.secondary)
+                .padding(.horizontal)
+            
+            Button("Got it!") {
+                onDismiss()
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 16)
+            .background(Color.blue)
+            .foregroundColor(.white)
+            .cornerRadius(8)
+            .padding(.bottom)
+        }
+        .padding()
+        .presentationDetents([.height(200)])
+    }
+}
+
