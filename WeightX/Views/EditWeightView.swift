@@ -16,6 +16,7 @@ struct EditWeightView: View {
     @State private var showingUnitInfo = false
     @State private var showingSettings = false
     @StateObject private var tagManager = TagManager.shared
+    @State private var settingsNavigationPath = NavigationPath()
     
     var availableTags: [String] {
         let defaultTags = [
@@ -105,7 +106,11 @@ struct EditWeightView: View {
                 Text("You can change the weight unit in Settings.")
             }
             .fullScreenCover(isPresented: $showingSettings) {
-                SettingsView(isShowing: $showingSettings, isUserLoggedIn: .constant(true))
+                SettingsView(
+                    isShowing: $showingSettings, 
+                    isUserLoggedIn: .constant(true),
+                    navigationPath: $settingsNavigationPath
+                )
             }
             .alert(isPresented: $showError) {
                 Alert(

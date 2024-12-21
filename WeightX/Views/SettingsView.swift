@@ -14,6 +14,7 @@ import HealthKit
 struct SettingsView: View {
     @Binding var isShowing: Bool
     @Binding var isUserLoggedIn: Bool
+    @Binding var navigationPath: NavigationPath
     @AppStorage("userName") private var username: String = ""
     @State private var selectedUnit: WeightUnit = UserSettings.shared.weightUnit
     @State private var showingSignOutAlert = false
@@ -27,10 +28,10 @@ struct SettingsView: View {
     @State private var healthKitErrorMessage = ""
     
     var body: some View {
-        NavigationView {
+        NavigationStack(path: $navigationPath) {
             Form {
                 Section {
-                    NavigationLink(destination: ProfileView()) {
+                    NavigationLink(value: "profile") {
                         HStack {
                             Image(systemName: "person.circle")
                             Text(username.isEmpty ? "Your Profile" : "\(username)'s Profile")
@@ -50,7 +51,7 @@ struct SettingsView: View {
                 }
                 
                 Section {
-                    NavigationLink(destination: FeedbackView()) {
+                    NavigationLink(value: "feedback") {
                         HStack {
                             Image(systemName: "message")
                             Text("Feedback")
@@ -113,6 +114,16 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .navigationDestination(for: String.self) { destination in
+                switch destination {
+                case "profile":
+                    ProfileView()
+                case "feedback":
+                    FeedbackView()
+                default:
+                    EmptyView()
+                }
+            }
             .sheet(isPresented: $showingImport) {
                 ImportView()
             }

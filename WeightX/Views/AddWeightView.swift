@@ -27,6 +27,7 @@ struct AddWeightView: View {
     @State private var isLoadingEntry = false
     private let initialDate: Date?
     @StateObject private var tagManager = TagManager.shared
+    @State private var settingsNavigationPath = NavigationPath()
     
     init(preselectedDate: Date? = nil, initialWeight: String = "") {
         self.initialDate = preselectedDate
@@ -124,7 +125,11 @@ struct AddWeightView: View {
                 Text("You can change the weight unit in Settings.")
             }
             .fullScreenCover(isPresented: $showingSettings) {
-                SettingsView(isShowing: $showingSettings, isUserLoggedIn: .constant(true))
+                SettingsView(
+                    isShowing: $showingSettings, 
+                    isUserLoggedIn: .constant(true),
+                    navigationPath: $settingsNavigationPath
+                )
             }
             .alert(isPresented: $showError) {
                 Alert(

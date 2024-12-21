@@ -14,6 +14,7 @@ import FirebaseFirestore
 struct MainTabView: View {
     @Binding var isUserLoggedIn: Bool
     @State private var selectedTab = 0
+    @State private var settingsNavigationPath = NavigationPath()
     
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -38,12 +39,19 @@ struct MainTabView: View {
                 }
                 .tag(2)
             
-            SettingsView(isShowing: .constant(false), isUserLoggedIn: $isUserLoggedIn)
+            SettingsView(isShowing: .constant(false), 
+                        isUserLoggedIn: $isUserLoggedIn,
+                        navigationPath: $settingsNavigationPath)
                 .tabItem {
                     Image(systemName: "gear")
                     Text("Settings")
                 }
                 .tag(3)
+        }
+        .onChange(of: selectedTab) { newValue in
+            if newValue == 3 {
+                settingsNavigationPath = NavigationPath()
+            }
         }
     }
 }

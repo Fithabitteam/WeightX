@@ -31,6 +31,30 @@ struct HeightEditData {
     var unit: String
 }
 
+// Add this class to manage height edit state
+class HeightEditState: ObservableObject {
+    @Published var value: String
+    @Published var unit: String
+    @Published var isReady = false
+    
+    init() {
+        self.value = ""
+        self.unit = "cm"
+    }
+    
+    func reset() {
+        value = ""
+        unit = "cm"
+        isReady = false
+    }
+    
+    func setHeight(value: String, unit: String) {
+        self.value = value
+        self.unit = unit
+        self.isReady = true
+    }
+}
+
 struct ProfileView: View {
     @State private var userData: [String: Any] = [:]
     @State private var showingGoalFlow = false
@@ -38,6 +62,7 @@ struct ProfileView: View {
     @State private var editingField = ""
     @State private var editValue = ""
     @StateObject private var dateEditState = DateEditState()
+    @StateObject private var heightEditState = HeightEditState()
     @Environment(\.presentationMode) var presentationMode
     
     var body: some View {
@@ -250,9 +275,9 @@ struct ProfileView: View {
                             field: editingField,
                             value: $editValue,
                             date: $dateEditState.date,
+                            currentUnit: userData["heightUnit"] as? String,
                             onSave: { heightData in
                                 if let heightData = heightData {
-                                    // Update both height and unit
                                     let updates: [String: Any] = [
                                         "height": heightData.value,
                                         "heightUnit": heightData.unit
@@ -323,8 +348,15 @@ struct ProfileView: View {
         
         private func startEditing(_ field: String, value: String) {
             editingField = field
-            editValue = value
-            showingEditSheet = true
+            if field == "height" {
+                handleHeightEdit(
+                    value: value,
+                    unit: userData["heightUnit"] as? String
+                )
+            } else {
+                editValue = value
+                showingEditSheet = true
+            }
         }
         
         private func saveEdit() {
@@ -382,6 +414,28 @@ struct ProfileView: View {
         #endif
     }
 
+    // Add this function to ProfileView
+    private func handleHeightEdit(value: String, unit: String?) {
+        print("\nHandling height edit")
+        
+        showingEditSheet = false
+        heightEditState.reset()
+        
+        heightEditState.setHeight(
+            value: value,
+            unit: unit ?? "cm"
+        )
+        print("Set height for editing: \(value) \(unit ?? "cm")")
+        
+        if heightEditState.isReady {
+            print("State is ready, showing height edit sheet")
+            editValue = value  // Set the editValue for the EditSheet
+            showingEditSheet = true
+        } else {
+            print("ERROR: Height edit state not ready")
+        }
+    }
+
 }
 
 struct EditableRow: View {
@@ -407,9 +461,19 @@ struct EditSheet: View {
     let field: String
     @Binding var value: String
     @Binding var date: Date
-    let onSave: (_ heightData: HeightEditData?) -> Void  // Modified to include height data
+    let onSave: (_ heightData: HeightEditData?) -> Void
     @Environment(\.presentationMode) var presentationMode
-    @State private var isHeightInCM: Bool = true
+    @State private var isHeightInCM: Bool
+    private let currentUnit: String?
+    
+    init(field: String, value: Binding<String>, date: Binding<Date>, currentUnit: String?, onSave: @escaping (_ heightData: HeightEditData?) -> Void) {
+        self.field = field
+        self._value = value
+        self._date = date
+        self.onSave = onSave
+        self.currentUnit = currentUnit
+        _isHeightInCM = State(initialValue: currentUnit?.lowercased() != "inch")
+    }
     
     private var isDateField: Bool {
         ["dateOfBirth", "goalSetDate", "targetDate"].contains(field)
