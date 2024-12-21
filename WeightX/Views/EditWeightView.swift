@@ -25,7 +25,7 @@ struct EditWeightView: View {
             "Pre-Workout",
             "Fasted"
         ]
-        return defaultTags + tagManager.userTags
+        return defaultTags + tagManager.userTags.reversed()
     }
     
     init(log: WeightLog, onSave: @escaping () -> Void) {
@@ -75,32 +75,11 @@ struct EditWeightView: View {
                         .disabled(newTag.isEmpty)
                     }
                     
-                    if !selectedTags.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack {
-                                ForEach(Array(selectedTags), id: \.self) { tag in
-                                    TagView(tag: tag) {
-                                        selectedTags.remove(tag)
-                                    }
-                                }
-                            }
-                            .padding(.vertical, 8)
-                        }
-                    }
-                    
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack {
-                            ForEach(availableTags, id: \.self) { tag in
-                                TagView(
-                                    tag: tag,
-                                    isSelected: selectedTags.contains(tag)
-                                ) {
-                                    toggleTag(tag)
-                                }
-                            }
-                        }
-                        .padding(.vertical, 8)
-                    }
+                    TagGridView(
+                        tags: availableTags,
+                        selectedTags: selectedTags,
+                        onTagTap: toggleTag
+                    )
                 }
                 
                 Section(header: Text("Notes")) {

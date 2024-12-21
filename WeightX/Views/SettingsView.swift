@@ -33,7 +33,7 @@ struct SettingsView: View {
                     NavigationLink(destination: ProfileView()) {
                         HStack {
                             Image(systemName: "person.circle")
-                            Text("\(username)'s Profile")
+                            Text(username.isEmpty ? "Your Profile" : "\(username)'s Profile")
                         }
                     }
                 }

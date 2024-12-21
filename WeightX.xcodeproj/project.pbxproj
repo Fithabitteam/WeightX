@@ -10,6 +10,7 @@
 		7232E6952D14780000832E5A /* FeedbackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7232E6942D14780000832E5A /* FeedbackView.swift */; };
 		7232E6972D15D7FB00832E5A /* WeightDifferenceGraphView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7232E6962D15D7FB00832E5A /* WeightDifferenceGraphView.swift */; };
 		7232E6992D15F3E600832E5A /* TagManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7232E6982D15F3E600832E5A /* TagManager.swift */; };
+		7232E69B2D16707000832E5A /* TagGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7232E69A2D16707000832E5A /* TagGridView.swift */; };
 		7237087E2CAD827F00B5A577 /* WeightXApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7237087D2CAD827F00B5A577 /* WeightXApp.swift */; };
 		723708822CAD828200B5A577 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 723708812CAD828200B5A577 /* Assets.xcassets */; };
 		723708852CAD828200B5A577 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 723708842CAD828200B5A577 /* Preview Assets.xcassets */; };
@@ -105,6 +106,7 @@
 		7232E6942D14780000832E5A /* FeedbackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackView.swift; sourceTree = "<group>"; };
 		7232E6962D15D7FB00832E5A /* WeightDifferenceGraphView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightDifferenceGraphView.swift; sourceTree = "<group>"; };
 		7232E6982D15F3E600832E5A /* TagManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagManager.swift; sourceTree = "<group>"; };
+		7232E69A2D16707000832E5A /* TagGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagGridView.swift; sourceTree = "<group>"; };
 		7237087D2CAD827F00B5A577 /* WeightXApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightXApp.swift; sourceTree = "<group>"; };
 		723708812CAD828200B5A577 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		723708842CAD828200B5A577 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
@@ -333,6 +335,7 @@
 				72DC4BEA2D0C80770007A911 /* EditPaceView.swift */,
 				72DC4BEB2D0C80770007A911 /* EditTargetView.swift */,
 				72DC4BEC2D0C80770007A911 /* EditWeightView.swift */,
+				7232E69A2D16707000832E5A /* TagGridView.swift */,
 				7232E6942D14780000832E5A /* FeedbackView.swift */,
 				72DC4BED2D0C80770007A911 /* FullScreenGraphView.swift */,
 				72DC4BEE2D0C80770007A911 /* GoalTimelineView.swift */,
@@ -560,6 +563,7 @@
 				72DC4C082D0C80770007A911 /* YearPerformanceView.swift in Sources */,
 				72DC4C092D0C80770007A911 /* WeekSelectorView.swift in Sources */,
 				72DC4C0A2D0C80770007A911 /* MonthPickerView.swift in Sources */,
+				7232E69B2D16707000832E5A /* TagGridView.swift in Sources */,
 				72DC4C0B2D0C80770007A911 /* EditGoalView.swift in Sources */,
 				72DC4C0C2D0C80770007A911 /* TargetWeightView.swift in Sources */,
 				72DC4C0D2D0C80770007A911 /* FullScreenGraphView.swift in Sources */,

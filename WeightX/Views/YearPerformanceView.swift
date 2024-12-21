@@ -143,6 +143,7 @@ struct YearPerformanceView: View {
             VStack(spacing: 16) {
                 summaryView(calculateYearSummary())
                 chartView(yearData)
+                statsView(yearData)
             }
         }
     }
@@ -413,6 +414,173 @@ struct YearPerformanceView: View {
             let color = difference > 0 ? Color.red : Color.green
             print("Goal is not Weight Gain, difference is \(difference), returning \(difference > 0 ? "red" : "green")")
             return color
+        }
+    }
+    
+    // Add this struct to hold year statistics
+    struct YearStats {
+        let startWeight: Double
+        let endWeight: Double
+        let consecutiveDropWeeks: Int
+        let consecutiveGainWeeks: Int
+        let bestDrop: Double
+        let bestGain: Double
+        let beginnerPaceWeeks: Int
+        let intermediatePaceWeeks: Int
+        let advancedPaceWeeks: Int
+        
+        static func calculate(from yearData: YearData) -> YearStats {
+            var consecutiveDrop = 0
+            var maxConsecutiveDrop = 0
+            var consecutiveGain = 0
+            var maxConsecutiveGain = 0
+            var bestDrop = 0.0
+            var bestGain = 0.0
+            var beginnerWeeks = 0
+            var intermediateWeeks = 0
+            var advancedWeeks = 0
+            
+            // Get unique daily weights for start and end
+            let calendar = Calendar.current
+            let uniqueDailyWeights = yearData.weeklyData.flatMap { week in
+                week.weights.uniqueDailyWeights()
+            }.sorted { $0.date < $1.date }
+            
+            let startWeight = uniqueDailyWeights.first?.weight ?? 0
+            let endWeight = uniqueDailyWeights.last?.weight ?? 0
+            
+            // Calculate weekly averages using unique daily weights
+            var weeklyAverages: [(weekNumber: Int, average: Double)] = []
+            for weekData in yearData.weeklyData {
+                let weekWeights = weekData.weights.uniqueDailyWeights()
+                if !weekWeights.isEmpty {
+                    let weekAvg = weekWeights.map { $0.weight }.reduce(0, +) / Double(weekWeights.count)
+                    weeklyAverages.append((weekData.weekNumber, weekAvg))
+                }
+            }
+            
+            // Calculate differences and streaks using weekly averages
+            for i in 1..<weeklyAverages.count {
+                let currentAvg = weeklyAverages[i].average
+                let prevAvg = weeklyAverages[i-1].average
+                let difference = currentAvg - prevAvg
+                
+                // Track consecutive weeks
+                if difference < 0 {
+                    consecutiveDrop += 1
+                    consecutiveGain = 0
+                    maxConsecutiveDrop = max(maxConsecutiveDrop, consecutiveDrop)
+                    bestDrop = min(bestDrop, difference)
+                } else if difference > 0 {
+                    consecutiveGain += 1
+                    consecutiveDrop = 0
+                    maxConsecutiveGain = max(maxConsecutiveGain, consecutiveGain)
+                    bestGain = max(bestGain, difference)
+                }
+                
+                // Track pace weeks
+                let absDiff = abs(difference)
+                if absDiff >= 0.75 {
+                    advancedWeeks += 1
+                } else if absDiff >= 0.5 {
+                    intermediateWeeks += 1
+                } else if absDiff >= 0.25 {
+                    beginnerWeeks += 1
+                }
+            }
+            
+            return YearStats(
+                startWeight: startWeight,
+                endWeight: endWeight,
+                consecutiveDropWeeks: maxConsecutiveDrop,
+                consecutiveGainWeeks: maxConsecutiveGain,
+                bestDrop: bestDrop,
+                bestGain: bestGain,
+                beginnerPaceWeeks: beginnerWeeks,
+                intermediatePaceWeeks: intermediateWeeks,
+                advancedPaceWeeks: advancedWeeks
+            )
+        }
+    }
+    
+    // Add this view to display the statistics
+    private func statsView(_ yearData: YearData) -> some View {
+        let stats = YearStats.calculate(from: yearData)
+        
+        return VStack(spacing: 16) {
+            // Year Start/End Weights
+            HStack(spacing: 20) {
+                StatBox(title: "Start Weight", value: String(format: "%.1f %@", 
+                    weightUnit.convert(stats.startWeight, from: .kg), weightUnit.rawValue))
+                StatBox(title: "End Weight", value: String(format: "%.1f %@", 
+                    weightUnit.convert(stats.endWeight, from: .kg), weightUnit.rawValue))
+            }
+            
+            // Consecutive Weeks
+            HStack(spacing: 20) {
+                StatBox(title: "Max Drop Streak", value: "\(stats.consecutiveDropWeeks) weeks")
+                StatBox(title: "Max Gain Streak", value: "\(stats.consecutiveGainWeeks) weeks")
+            }
+            
+            // Best Changes
+            HStack(spacing: 20) {
+                StatBox(title: "Best Drop", value: String(format: "%.0fg", abs(stats.bestDrop * 1000)))
+                StatBox(title: "Best Gain", value: String(format: "%.0fg", stats.bestGain * 1000))
+            }
+            
+            // Pace Distribution
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Pace Distribution")
+                    .font(.headline)
+                
+                HStack(spacing: 20) {
+                    PaceBox(title: "Beginner", count: stats.beginnerPaceWeeks)
+                    PaceBox(title: "Intermediate", count: stats.intermediatePaceWeeks)
+                    PaceBox(title: "Advanced", count: stats.advancedPaceWeeks)
+                }
+            }
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+        }
+        .padding()
+    }
+    
+    // Helper views for statistics
+    private struct StatBox: View {
+        let title: String
+        let value: String
+        
+        var body: some View {
+            VStack(spacing: 4) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Text(value)
+                    .font(.headline)
+            }
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+        }
+    }
+    
+    private struct PaceBox: View {
+        let title: String
+        let count: Int
+        
+        var body: some View {
+            VStack(spacing: 4) {
+                Text(title)
+                    .font(.caption)
+                Text("\(count)")
+                    .font(.headline)
+                Text("weeks")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity)
         }
     }
 }

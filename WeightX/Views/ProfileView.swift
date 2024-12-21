@@ -25,6 +25,12 @@ class DateEditState: ObservableObject {
     }
 }
 
+// Add this struct to hold height edit data
+struct HeightEditData {
+    var value: Double
+    var unit: String
+}
+
 struct ProfileView: View {
     @State private var userData: [String: Any] = [:]
     @State private var showingGoalFlow = false
@@ -65,8 +71,10 @@ struct ProfileView: View {
                 
                 EditableRow(
                     title: "Height",
-                    value: (userData["height"] as? Double).map { "\(String(format: "%.1f", $0)) cm" } ?? "Not set",
-                    onEdit: { startEditing("height", value: userData["height"] as? String ?? "") }
+                    value: (userData["height"] as? Double).map { 
+                        "\(String(format: "%.1f", $0)) \(userData["heightUnit"] as? String ?? "cm")" 
+                    } ?? "Not set",
+                    onEdit: { startEditing("height", value: (userData["height"] as? Double)?.description ?? "") }
                 )
                 
                 NavigationLink(destination: UserSexView()) {
@@ -242,7 +250,27 @@ struct ProfileView: View {
                             field: editingField,
                             value: $editValue,
                             date: $dateEditState.date,
-                            onSave: saveEdit
+                            onSave: { heightData in
+                                if let heightData = heightData {
+                                    // Update both height and unit
+                                    let updates: [String: Any] = [
+                                        "height": heightData.value,
+                                        "heightUnit": heightData.unit
+                                    ]
+                                    
+                                    guard let userId = Auth.auth().currentUser?.uid else { return }
+                                    let db = Firestore.firestore()
+                                    db.collection("users").document(userId).updateData(updates) { error in
+                                        if let error = error {
+                                            print("Error updating height: \(error)")
+                                        } else {
+                                            loadUserData()
+                                        }
+                                    }
+                                } else {
+                                    saveEdit()
+                                }
+                            }
                         )
                     }
                 }
@@ -302,18 +330,19 @@ struct ProfileView: View {
         private func saveEdit() {
             guard let userId = Auth.auth().currentUser?.uid else { return }
             
-            var value: Any
+            var updates: [String: Any] = [:]
+            
             switch editingField {
             case "height":
-                value = Double(editValue) ?? 0.0
+                if let height = Double(editValue) {
+                    updates["height"] = height
+                }
             default:
-                value = editValue
+                updates[editingField] = editValue
             }
             
             let db = Firestore.firestore()
-            db.collection("users").document(userId).updateData([
-                editingField: value
-            ]) { error in
+            db.collection("users").document(userId).updateData(updates) { error in
                 if let error = error {
                     print("Error updating \(editingField): \(error)")
                 } else {
@@ -378,12 +407,16 @@ struct EditSheet: View {
     let field: String
     @Binding var value: String
     @Binding var date: Date
-    let onSave: () -> Void
+    let onSave: (_ heightData: HeightEditData?) -> Void  // Modified to include height data
     @Environment(\.presentationMode) var presentationMode
+    @State private var isHeightInCM: Bool = true
     
-    // Add this computed property to determine if it's a date field
     private var isDateField: Bool {
         ["dateOfBirth", "goalSetDate", "targetDate"].contains(field)
+    }
+    
+    private var isHeightField: Bool {
+        field == "height"
     }
     
     var body: some View {
@@ -409,6 +442,21 @@ struct EditSheet: View {
                         .datePickerStyle(.graphical)
                         .frame(maxHeight: 400)
                     }
+                } else if isHeightField {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            TextField("Enter height", text: $value)
+                                .keyboardType(.decimalPad)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                            
+                            Picker("Unit", selection: $isHeightInCM) {
+                                Text("cm").tag(true)
+                                Text("inch").tag(false)
+                            }
+                            .pickerStyle(SegmentedPickerStyle())
+                            .frame(width: 100)
+                        }
+                    }
                 } else {
                     TextField(field.replacingOccurrences(of: "([A-Z])", with: " $1", options: .regularExpression).capitalized, text: $value)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -420,22 +468,23 @@ struct EditSheet: View {
                     presentationMode.wrappedValue.dismiss()
                 },
                 trailing: Button("Save") {
-                    if isDateField {
-                        // For date fields, format the date before saving
-                        value = formatDate(date)
+                    if isHeightField {
+                        if let height = Double(value) {
+                            let heightData = HeightEditData(
+                                value: isHeightInCM ? height : height * 2.54,
+                                unit: isHeightInCM ? "cm" : "inch"
+                            )
+                            onSave(heightData)
+                        } else {
+                            onSave(nil)
+                        }
+                    } else {
+                        onSave(nil)
                     }
-                    onSave()
                     presentationMode.wrappedValue.dismiss()
                 }
             )
         }
-    }
-    
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        return formatter.string(from: date)
     }
 }
 

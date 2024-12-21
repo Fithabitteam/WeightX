@@ -94,32 +94,11 @@ struct AddWeightView: View {
                         .disabled(newTag.isEmpty)
                     }
                     
-                    if !selectedTags.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack {
-                                ForEach(Array(selectedTags), id: \.self) { tag in
-                                    TagView(tag: tag) {
-                                        selectedTags.remove(tag)
-                                    }
-                                }
-                            }
-                            .padding(.vertical, 8)
-                        }
-                    }
-                    
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack {
-                            ForEach(availableTags, id: \.self) { tag in
-                                TagView(
-                                    tag: tag,
-                                    isSelected: selectedTags.contains(tag)
-                                ) {
-                                    toggleTag(tag)
-                                }
-                            }
-                        }
-                        .padding(.vertical, 8)
-                    }
+                    TagGridView(
+                        tags: availableTags,
+                        selectedTags: selectedTags,
+                        onTagTap: toggleTag
+                    )
                 }
                 
                 Section(header: Text("Notes")) {
@@ -168,20 +147,34 @@ struct AddWeightView: View {
         Task {
             do {
                 try await saveWeight()
-                presentationMode.wrappedValue.dismiss()
+                DispatchQueue.main.async {
+                    presentationMode.wrappedValue.dismiss()
+                }
+            } catch let error as NSError {
+                print("Error saving weight: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    self.errorMessage = error.localizedDescription
+                    self.showError = true
+                }
             } catch {
-                print("Error saving weight: \(error)")
-                errorMessage = "Error saving weight. Please try again."
-                showError = true
+                print("Unexpected error: \(error)")
+                DispatchQueue.main.async {
+                    self.errorMessage = "An unexpected error occurred. Please try again."
+                    self.showError = true
+                }
             }
         }
     }
     
     private func saveWeight() async throws {
-        guard let userId = Auth.auth().currentUser?.uid,
-              let weightValue = Double(weight) else {
-            throw NSError(domain: "", code: -1, 
-                userInfo: [NSLocalizedDescriptionKey: "Invalid weight value"])
+        guard let userId = Auth.auth().currentUser?.uid else {
+            throw NSError(domain: "WeightX", code: -1, 
+                userInfo: [NSLocalizedDescriptionKey: "User not logged in"])
+        }
+        
+        guard let weightValue = Double(weight) else {
+            throw NSError(domain: "WeightX", code: -2, 
+                userInfo: [NSLocalizedDescriptionKey: "Please enter a valid weight"])
         }
         
         let weightInKg = UserSettings.shared.weightUnit == .kg ? 
@@ -199,15 +192,30 @@ struct AddWeightView: View {
             "updatedAt": Date()
         ]
         
+        // Save to Firestore with better error handling
         let db = Firestore.firestore()
-        if let existingEntry = existingEntry {
-            try await db.collection("weights").document(existingEntry.id).updateData(data)
-        } else {
-            try await db.collection("weights").addDocument(data: data)
+        do {
+            if let existingEntry = existingEntry {
+                try await db.collection("weights").document(existingEntry.id).updateData(data)
+                print("Successfully updated weight entry")
+            } else {
+                let docRef = try await db.collection("weights").addDocument(data: data)
+                print("Successfully added new weight entry with ID: \(docRef.documentID)")
+            }
+        } catch {
+            print("Firestore error: \(error)")
+            throw NSError(domain: "WeightX", code: -3, 
+                userInfo: [NSLocalizedDescriptionKey: "Failed to save weight. Please check your internet connection and try again."])
         }
         
+        // Try to save to HealthKit, but don't throw error if it fails
         if HealthKitManager.shared.isHealthKitAvailable {
-            try await HealthKitManager.shared.saveWeight(weightInKg, date: date)
+            do {
+                try await HealthKitManager.shared.saveWeight(weightInKg, date: date)
+                print("Successfully saved to HealthKit")
+            } catch {
+                print("HealthKit save failed but weight was saved to Firestore: \(error)")
+            }
         }
     }
     
